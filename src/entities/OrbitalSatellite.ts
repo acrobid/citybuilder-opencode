@@ -5,6 +5,7 @@ import {
   SATELLITE_TYPES,
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
+  SHIELD_BARRIER,
   SYNERGY,
 } from "../config.js";
 
@@ -20,6 +21,9 @@ export class OrbitalSatellite {
   hasTwinSynergy = false;
   hasTrinitySynergy = false;
   hasCrossRingSynergy = false;
+  // Shield barrier state (only used for "shield" type)
+  barriers: number[] = [];
+  barrierRegenTimer = 0;
 
   get config() {
     return SATELLITE_TYPES[this.type];
@@ -77,5 +81,18 @@ export class OrbitalSatellite {
     let diff = Math.abs(this.angle - other.angle);
     if (diff > Math.PI) diff = Math.PI * 2 - diff;
     return diff;
+  }
+
+  /** Compute world position of a shield barrier segment */
+  static getBarrierWorldPos(sat: OrbitalSatellite, index: number): { x: number; y: number } {
+    const count = SHIELD_BARRIER.count;
+    const arcRad = (SHIELD_BARRIER.arcDegrees / 180) * Math.PI;
+    const angleOffset = count > 1 ? (index / (count - 1) - 0.5) * arcRad : 0;
+    const barrierAngle = sat.angle + angleOffset;
+    const dist = sat.ringRadius + SHIELD_BARRIER.distance;
+    return {
+      x: PLANET_CENTER_X + Math.cos(barrierAngle) * dist,
+      y: PLANET_CENTER_Y + Math.sin(barrierAngle) * dist,
+    };
   }
 }

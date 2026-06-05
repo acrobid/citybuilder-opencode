@@ -157,6 +157,15 @@ export const ENEMY_TYPES = {
 export type EnemyTypeName = keyof typeof ENEMY_TYPES;
 
 // ── Wave Config ──
+export const SHIELD_BARRIER = {
+  hitCount: 3,
+  count: 7,
+  arcDegrees: 45,
+  distance: 60,
+  size: 24,
+  regenTime: 20000,
+} as const;
+
 export const WAVE_CONFIG = {
   initialDelay: 3000, // 3s grace period before wave 1
   buildPhaseDuration: 30000, // 30s between waves (decreases by 500ms per wave)

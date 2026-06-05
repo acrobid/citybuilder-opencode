@@ -222,6 +222,31 @@ export function drawShieldWave(g: Phaser.GameObjects.Graphics, x: number, y: num
   fillCircle(g, Math.round(x), Math.round(y), 10, SPACE_COLORS.SHIELD_ARC, 0.2);
 }
 
+export function drawShieldBarrier(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  hits: number,
+  maxHits: number,
+): void {
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  const alpha = 0.3 + (hits / maxHits) * 0.7;
+  // Outer glow
+  fillCircle(g, cx, cy, 14, SPACE_COLORS.SHIELD_ARC, alpha * 0.2);
+  fillCircle(g, cx, cy, 11, SPACE_COLORS.SHIELD_ARC, alpha * 0.15);
+  // Wider panel body (longer along the arc, shorter radially)
+  g.fillStyle(SPACE_COLORS.SHIELD_ARC, alpha * 0.7);
+  g.fillRect(cx - 10, cy - 5, 20, 10);
+  // Inner bright core
+  g.fillStyle(0xaaddff, alpha * 0.8);
+  g.fillRect(cx - 6, cy - 2, 12, 4);
+  // Bright edge highlights
+  g.fillStyle(0xffffff, alpha * 0.4);
+  g.fillRect(cx - 10, cy - 5, 20, 1);
+  g.fillRect(cx - 10, cy + 4, 20, 1);
+}
+
 export function drawDroneProj(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   g.fillStyle(SPACE_COLORS.DRONE_BODY, 1);
   g.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);

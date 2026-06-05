@@ -1,7 +1,13 @@
 import { Enemy, EnemyTypeName } from "../entities/Enemy.js";
-import { ENEMY_TYPES, WAVE_CONFIG, PLANET_CENTER_X, PLANET_CENTER_Y } from "../config.js";
+import {
+  ENEMY_TYPES,
+  WAVE_CONFIG,
+  SHIELD_BARRIER,
+  PLANET_CENTER_X,
+  PLANET_CENTER_Y,
+} from "../config.js";
 import type { WorldMap } from "../map/WorldMap.js";
-import type { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
+import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
 
 function randomSpawnPos(): { x: number; y: number } {
   const angle = Math.random() * Math.PI * 2;
@@ -29,7 +35,7 @@ interface EnemyBullet {
 export class WaveSystem {
   enemies: Enemy[] = [];
   enemyBullets: EnemyBullet[] = [];
-  enemyBulletExplosions: { x: number; y: number; time: number }[] = [];
+  enemyBulletExplosions: { x: number; y: number; time: number; color?: number }[] = [];
   private waveNumber = 0;
   private waveActive = false;
   private inBuildPhase = true;
@@ -157,6 +163,31 @@ export class WaveSystem {
       const ny = b.vy != 0 ? b.vy / Math.sqrt(b.vx * b.vx + b.vy * b.vy) : 0;
       b.worldX += nx * move;
       b.worldY += ny * move;
+
+      // Check collision with shield barriers
+      let blockedByBarrier = false;
+      for (const sat of satellites) {
+        if (!sat.alive || sat.type !== "shield" || !sat.barriers) continue;
+        for (let bi = 0; bi < sat.barriers.length; bi++) {
+          if (sat.barriers[bi] <= 0) continue;
+          const pos = OrbitalSatellite.getBarrierWorldPos(sat, bi);
+          const halfSize = SHIELD_BARRIER.size / 2;
+          if (Math.abs(b.worldX - pos.x) < halfSize && Math.abs(b.worldY - pos.y) < halfSize) {
+            sat.barriers[bi]--;
+            b.alive = false;
+            this.enemyBulletExplosions.push({
+              x: b.worldX,
+              y: b.worldY,
+              time: 200,
+              color: 0x88ccff,
+            });
+            blockedByBarrier = true;
+            break;
+          }
+        }
+        if (blockedByBarrier) break;
+      }
+      if (blockedByBarrier) continue;
 
       // Check collision with satellites
       for (const sat of satellites) {

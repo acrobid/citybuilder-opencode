@@ -103,7 +103,7 @@ export class GameScene extends Phaser.Scene {
         if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY);
       }
       for (const ex of this.waveSystem.enemyBulletExplosions) {
-        drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200);
+        drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200, ex.color ?? 0xff4444);
       }
       this.defenseSystem.render(this.graphics);
       return;
@@ -150,7 +150,7 @@ export class GameScene extends Phaser.Scene {
 
     // Enemy bullet hit explosions
     for (const ex of this.waveSystem.enemyBulletExplosions) {
-      drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200);
+      drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200, ex.color ?? 0xff4444);
     }
 
     this.defenseSystem.render(this.graphics);

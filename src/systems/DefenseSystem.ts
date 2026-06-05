@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { SATELLITE_TYPES, SYNERGY, PLANET_CENTER_X, PLANET_CENTER_Y } from "../config.js";
+import { SATELLITE_TYPES, SYNERGY, SHIELD_BARRIER } from "../config.js";
 import type { OrbitRing, SatelliteType } from "../config.js";
 import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
 import { Enemy } from "../entities/Enemy.js";
@@ -13,6 +13,7 @@ import {
   drawEMPWave,
   drawShieldWave,
   drawDroneProj,
+  drawShieldBarrier,
 } from "../graphics/SatelliteGraphics.js";
 import { drawExplosion } from "../graphics/EnemyGraphics.js";
 
@@ -74,6 +75,12 @@ export class DefenseSystem {
     const sat = new OrbitalSatellite(type, ring, angle);
     this.satellites.push(sat);
     this.cooldowns.set(sat, 0);
+
+    if (type === "shield") {
+      sat.barriers = Array.from({ length: SHIELD_BARRIER.count }, () => SHIELD_BARRIER.hitCount);
+      sat.barrierRegenTimer = SHIELD_BARRIER.regenTime;
+    }
+
     return true;
   }
 
@@ -165,7 +172,7 @@ export class DefenseSystem {
         this.applyGravitySlow(sat, enemies, delta);
       }
       if (sat.config.special === "shield") {
-        this.applyShieldEffect(sat, enemies, delta);
+        this.updateShieldBarriers(sat, delta);
       }
     }
 
@@ -485,33 +492,23 @@ export class DefenseSystem {
     }
   }
 
-  private applyShieldEffect(sat: OrbitalSatellite, enemies: Enemy[], _delta: number): void {
-    // Shield arc: 60° cone facing outward from planet
-    const satAngle = sat.angle; // satellite's angle from planet center
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      const dx = e.worldX - sat.worldX;
-      const dy = e.worldY - sat.worldY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > sat.range) continue;
+  private updateShieldBarriers(sat: OrbitalSatellite, delta: number): void {
+    if (!sat.barriers || sat.barriers.length === 0) return;
 
-      // Check if enemy is in the shield arc (facing outward from planet)
-      const enemyAngle = Math.atan2(e.worldY - PLANET_CENTER_Y, e.worldX - PLANET_CENTER_X);
-      let diff = Math.abs(enemyAngle - satAngle);
-      if (diff > Math.PI) diff = Math.PI * 2 - diff;
-      if (diff < (30 * Math.PI) / 180) {
-        // 30° half-angle = 60° cone
-        // Push enemy back
-        const nx = dx / dist;
-        const ny = dy / dist;
-        e.worldX += nx * 3;
-        e.worldY += ny * 3;
-        const shieldKill = e.takeDamage(5);
-        if (shieldKill) {
-          this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 400, 0x88ccff);
+    sat.barrierRegenTimer -= delta;
+    if (sat.barrierRegenTimer <= 0) {
+      sat.barrierRegenTimer = SHIELD_BARRIER.regenTime;
+      for (let i = 0; i < sat.barriers.length; i++) {
+        if (sat.barriers[i] <= 0) {
+          sat.barriers[i] = SHIELD_BARRIER.hitCount;
+          break;
         }
-        e.stunTimer = 200;
       }
+    }
+
+    if (sat.barriers.every((hits) => hits <= 0)) {
+      sat.alive = false;
+      this.addExplosion(sat.worldX, sat.worldY, sat.range * 0.3, 600, 0x88ccff);
     }
   }
 
@@ -613,15 +610,39 @@ export class DefenseSystem {
 
   // ── Save/Load helpers ──
 
-  getSatelliteData(): { type: string; ring: string; angle: number }[] {
-    return this.satellites.map((s) => ({ type: s.type, ring: s.ring, angle: s.angle }));
+  getSatelliteData(): {
+    type: string;
+    ring: string;
+    angle: number;
+    barriers: number[];
+    barrierRegenTimer: number;
+  }[] {
+    return this.satellites.map((s) => ({
+      type: s.type,
+      ring: s.ring,
+      angle: s.angle,
+      barriers: s.barriers ? [...s.barriers] : [],
+      barrierRegenTimer: s.barrierRegenTimer,
+    }));
   }
 
-  loadSatellites(data: { type: string; ring: string; angle: number }[]): void {
+  loadSatellites(
+    data: {
+      type: string;
+      ring: string;
+      angle: number;
+      barriers?: number[];
+      barrierRegenTimer?: number;
+    }[],
+  ): void {
     this.satellites = [];
     this.cooldowns.clear();
     for (const d of data) {
       const sat = new OrbitalSatellite(d.type as SatelliteType, d.ring as OrbitRing, d.angle);
+      if (d.barriers && d.barriers.length > 0) {
+        sat.barriers = d.barriers;
+        sat.barrierRegenTimer = d.barrierRegenTimer ?? SHIELD_BARRIER.regenTime;
+      }
       this.satellites.push(sat);
       this.cooldowns.set(sat, 0);
     }
@@ -630,6 +651,16 @@ export class DefenseSystem {
   // ── Rendering ──
 
   render(g: Phaser.GameObjects.Graphics): void {
+    // Shield barriers
+    for (const sat of this.satellites) {
+      if (sat.type !== "shield" || !sat.barriers) continue;
+      for (let i = 0; i < sat.barriers.length; i++) {
+        if (sat.barriers[i] <= 0) continue;
+        const pos = OrbitalSatellite.getBarrierWorldPos(sat, i);
+        drawShieldBarrier(g, pos.x, pos.y, sat.barriers[i], SHIELD_BARRIER.hitCount);
+      }
+    }
+
     // Drones
     for (const d of this.drones) {
       drawDroneProj(g, d.worldX, d.worldY);
