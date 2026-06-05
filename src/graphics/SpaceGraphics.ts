@@ -39,37 +39,29 @@ export function fillCircle(
 // ── Main rendering ──
 
 /** Draw deep space background + starfield across the entire map, but only on tiles outside the planet */
-export function drawSpaceBackground(g: Phaser.GameObjects.Graphics): void {
+export function drawSpaceBackground(
+  g: Phaser.GameObjects.Graphics,
+  spaceTiles: { x: number; y: number }[],
+): void {
   const mapW = MAP_COLS * TILE_SIZE;
   const mapH = MAP_ROWS * TILE_SIZE;
 
   g.fillStyle(SPACE_COLORS.SPACE_BG, 1);
   g.fillRect(0, 0, mapW, mapH);
 
-  for (let y = 0; y < MAP_ROWS; y++) {
-    for (let x = 0; x < MAP_COLS; x++) {
-      const cx = x * TILE_SIZE + TILE_SIZE / 2;
-      const cy = y * TILE_SIZE + TILE_SIZE / 2;
-      const dx = cx - PLANET_CENTER_X;
-      const dy = cy - PLANET_CENTER_Y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+  for (const { x, y } of spaceTiles) {
+    const hash = starHash(x, y);
+    const px = x * TILE_SIZE;
+    const py = y * TILE_SIZE;
 
-      if (dist <= PLANET_RADIUS) continue; // planet surface — drawn by WorldMap
-
-      const hash = starHash(x, y);
-      const px = x * TILE_SIZE;
-      const py = y * TILE_SIZE;
-
-      // 15% chance of a star in this tile
-      if (hash % 100 < 15) {
-        const brightness = hash % 100 < 5 ? 0.8 : 0.3;
-        const color = hash % 3 === 0 ? SPACE_COLORS.STAR_BRIGHT : SPACE_COLORS.STAR_DIM;
-        const sx = px + (hash % TILE_SIZE);
-        const sy = py + ((hash >> 8) % TILE_SIZE);
-        const size = hash % 4 === 0 ? 2 : 1;
-        g.fillStyle(color, brightness);
-        g.fillRect(sx, sy, size, size);
-      }
+    if (hash % 100 < 15) {
+      const brightness = hash % 100 < 5 ? 0.8 : 0.3;
+      const color = hash % 3 === 0 ? SPACE_COLORS.STAR_BRIGHT : SPACE_COLORS.STAR_DIM;
+      const sx = px + (hash % TILE_SIZE);
+      const sy = py + ((hash >> 8) % TILE_SIZE);
+      const size = hash % 4 === 0 ? 2 : 1;
+      g.fillStyle(color, brightness);
+      g.fillRect(sx, sy, size, size);
     }
   }
 }

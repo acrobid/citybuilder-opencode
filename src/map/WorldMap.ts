@@ -23,7 +23,8 @@ export class WorldMap {
   height: number;
   tiles: Tile[][];
   dirty = true;
-  planetTiles: { x: number; y: number }[];
+  planetTiles: { x: number; y: number }[] = [];
+  spaceTiles: { x: number; y: number }[] = [];
 
   markDirty(): void {
     this.dirty = true;
@@ -37,12 +38,15 @@ export class WorldMap {
 
     this.tiles = [];
     this.planetTiles = [];
+    this.spaceTiles = [];
     for (let y = 0; y < MAP_ROWS; y++) {
       this.tiles[y] = [];
       for (let x = 0; x < MAP_COLS; x++) {
         this.tiles[y][x] = new Tile(x, y);
         if (isTileOnPlanet(x, y)) {
           this.planetTiles.push({ x, y });
+        } else {
+          this.spaceTiles.push({ x, y });
         }
       }
     }
@@ -120,7 +124,7 @@ export class WorldMap {
     graphics.clear();
 
     // Draw space background first (fills entire map, adds stars outside planet)
-    drawSpaceBackground(graphics);
+    drawSpaceBackground(graphics, this.spaceTiles);
 
     // Draw planet atmospheric rim
     drawPlanetRim(graphics);
