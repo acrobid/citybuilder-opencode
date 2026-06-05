@@ -195,19 +195,41 @@ export function drawIonBeamLine(
   x2: number,
   y2: number,
   width: number,
+  time: number,
 ): void {
-  const outer = Math.max(2, Math.round(width * 0.5));
-  const mid = Math.max(1, Math.round(width * 0.28));
-  const core = Math.max(1, Math.round(width * 0.14));
-  const center = Math.max(1, Math.round(width * 0.05));
-  g.lineStyle(outer, 0xffdd44, 0.06);
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  const nx = dx / len;
+  const ny = dy / len;
+
+  // Base beam glow
+  g.lineStyle(Math.max(2, Math.round(width * 0.5)), 0xffdd44, 0.06);
   g.lineBetween(x1, y1, x2, y2);
-  g.lineStyle(mid, 0xffdd44, 0.18);
+  g.lineStyle(Math.max(1, Math.round(width * 0.28)), 0xffdd44, 0.18);
   g.lineBetween(x1, y1, x2, y2);
-  g.lineStyle(core, 0xffff44, 0.55);
+  g.lineStyle(Math.max(1, Math.round(width * 0.14)), 0xffff44, 0.55);
   g.lineBetween(x1, y1, x2, y2);
-  g.lineStyle(center, 0xffffaa, 0.9);
+  g.lineStyle(Math.max(1, Math.round(width * 0.05)), 0xffffaa, 0.9);
   g.lineBetween(x1, y1, x2, y2);
+
+  // Traveling energy pulses — large bright bands moving from sat → target
+  const t = time * 0.001;
+  const pulseCount = 3;
+  for (let i = 0; i < pulseCount; i++) {
+    const phase = i / pulseCount;
+    const p = (t * 0.25 + phase) % 1;
+    const px = x1 + nx * len * p;
+    const py = y1 + ny * len * p;
+    const pr = width * 0.6;
+    g.fillStyle(0xffff88, 0.35);
+    g.fillCircle(Math.round(px), Math.round(py), Math.round(pr * 1.5));
+    g.fillStyle(0xffffee, 0.6);
+    g.fillCircle(Math.round(px), Math.round(py), Math.round(pr));
+    g.fillStyle(0xffffff, 0.8);
+    g.fillCircle(Math.round(px), Math.round(py), Math.round(pr * 0.4));
+  }
 }
 
 export function drawMissileProj(
@@ -262,6 +284,77 @@ export function drawTeslaBolt(g: Phaser.GameObjects.Graphics, x: number, y: numb
   g.fillRect(Math.round(x) - 1, Math.round(y) - 3, 3, 6);
   g.fillStyle(0xffffff, 0.9);
   g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+}
+
+export function drawTeslaChain(
+  g: Phaser.GameObjects.Graphics,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  seed: number,
+): void {
+  const segments = 8;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  const nx = dx / len;
+  const ny = dy / len;
+  const px = -ny;
+  const py = nx;
+  const maxJitter = Math.min(len * 0.25, 40);
+
+  // Pseudo-random jitter per segment (seeded for consistent frame look)
+  let r = seed * 7.3;
+  const jx: number[] = [];
+  const jy: number[] = [];
+  for (let i = 1; i < segments; i++) {
+    r = (r * 9301 + 49297) % 233280;
+    const j = (r / 233280) * 2 - 1;
+    const s = Math.sin(i * 1.7 + seed * 0.1) * 0.5;
+    jx.push(px * maxJitter * (j + s));
+    jy.push(py * maxJitter * (j + s));
+  }
+
+  // Outer glow pass (wide, for zoomed-out visibility)
+  g.lineStyle(14, 0x44ddff, 0.2);
+  g.beginPath();
+  g.moveTo(x1, y1);
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const x = x1 + dx * t + jx[i - 1];
+    const y = y1 + dy * t + jy[i - 1];
+    g.lineTo(x, y);
+  }
+  g.lineTo(x2, y2);
+  g.strokePath();
+
+  // Core arc
+  g.lineStyle(5, 0xffffff, 0.9);
+  g.beginPath();
+  g.moveTo(x1, y1);
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const x = x1 + dx * t + jx[i - 1];
+    const y = y1 + dy * t + jy[i - 1];
+    g.lineTo(x, y);
+  }
+  g.lineTo(x2, y2);
+  g.strokePath();
+
+  // Inner bright line
+  g.lineStyle(2, SPACE_COLORS.TESLA_ARC, 0.9);
+  g.beginPath();
+  g.moveTo(x1, y1);
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const x = x1 + dx * t + jx[i - 1];
+    const y = y1 + dy * t + jy[i - 1];
+    g.lineTo(x, y);
+  }
+  g.lineTo(x2, y2);
+  g.strokePath();
 }
 
 export function drawEMPWave(g: Phaser.GameObjects.Graphics, x: number, y: number): void {

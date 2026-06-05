@@ -20,6 +20,14 @@ function randomSpawnPos(): { x: number; y: number } {
   };
 }
 
+function randomSpawnPosAt(dist: number): { x: number; y: number } {
+  const angle = Math.random() * Math.PI * 2;
+  return {
+    x: PLANET_CENTER_X + Math.cos(angle) * dist,
+    y: PLANET_CENTER_Y + Math.sin(angle) * dist,
+  };
+}
+
 interface QueuedSpawn {
   type: EnemyTypeName;
   delay: number; // ms from wave start
@@ -58,6 +66,7 @@ export class WaveSystem {
   private spawnQueue: QueuedSpawn[] = [];
   private spawnIndex = 0;
   private waveClearReward = 0;
+  private closeSpawnDist: number | null = null;
 
   update(time: number, delta: number, worldMap: WorldMap, satellites: OrbitalSatellite[]): void {
     // Initialize on first frame
@@ -313,7 +322,8 @@ export class WaveSystem {
 
   private spawnEnemy(type: EnemyTypeName): void {
     const cfg = ENEMY_TYPES[type];
-    const pos = randomSpawnPos();
+    const pos =
+      this.closeSpawnDist !== null ? randomSpawnPosAt(this.closeSpawnDist) : randomSpawnPos();
     const e = new Enemy(
       type,
       pos.x,
@@ -470,6 +480,7 @@ export class WaveSystem {
   private completeWave(time: number): void {
     this.waveActive = false;
     this.inBuildPhase = true;
+    this.closeSpawnDist = null;
     window.gameState.waveActive = false;
     window.gameState.enemiesRemaining = 0;
     this.enemies = [];
@@ -502,6 +513,7 @@ export class WaveSystem {
   }
 
   forceStartWave(time: number): void {
+    this.closeSpawnDist = null;
     if (this.waveActive) {
       const aCount = WAVE_CONFIG.baseEnemies;
       const sCount = this.waveNumber >= WAVE_CONFIG.scoutsStartWave ? WAVE_CONFIG.scoutsPerWave : 0;
@@ -527,6 +539,13 @@ export class WaveSystem {
     } else {
       this.startNextWave(time);
     }
+  }
+
+  forceStartWaveCloser(time: number): void {
+    if (!this.inBuildPhase) return;
+    this.closeSpawnDist = 1200;
+    this.startNextWave(time);
+    // closeSpawnDist stays set until completeWave clears it
   }
 
   loadState(waveNumber: number, time: number): void {

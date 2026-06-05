@@ -18,6 +18,8 @@ export class Enemy {
   slowTimer = 0; // >0 = slowed (remaining ms)
   stunTimer = 0; // >0 = stunned (remaining ms)
   shootTimer = 0; // cooldown until next shot
+  knockbackVx = 0;
+  knockbackVy = 0;
 
   constructor(
     type: EnemyTypeName,
@@ -46,6 +48,18 @@ export class Enemy {
     if (this.stunTimer > 0) {
       this.stunTimer -= delta;
       return false; // don't move while stunned
+    }
+
+    // Apply knockback
+    if (this.knockbackVx !== 0 || this.knockbackVy !== 0) {
+      this.worldX += this.knockbackVx * (delta / 1000);
+      this.worldY += this.knockbackVy * (delta / 1000);
+      this.knockbackVx *= 0.85;
+      this.knockbackVy *= 0.85;
+      if (Math.abs(this.knockbackVx) < 1 && Math.abs(this.knockbackVy) < 1) {
+        this.knockbackVx = 0;
+        this.knockbackVy = 0;
+      }
     }
 
     const dx = PLANET_CENTER_X - this.worldX;

@@ -18,6 +18,7 @@ import {
   drawRailgunTracer,
   drawIonBeamLine,
   drawTeslaBolt,
+  drawTeslaChain,
   drawEMPWave,
   drawShieldWave,
   drawShrapnelProj,
@@ -75,6 +76,7 @@ export class DefenseSystem {
   private cooldowns: Map<OrbitalSatellite, number> = new Map();
   private _lastSynergyTime = 0;
   private _synergyDirty = true;
+  private _renderTime = 0;
   // Explosion effects (position, radius, remaining time)
   explosions: { x: number; y: number; r: number; time: number; color: number }[] = [];
   particles: Particle[] = [];
@@ -165,6 +167,7 @@ export class DefenseSystem {
 
   /** Main update: orbit, synergy, fire, projectiles, specials */
   update(time: number, delta: number, enemies: Enemy[]): void {
+    this._renderTime = time;
     // Remove dead satellites
     for (let i = this.satellites.length - 1; i >= 0; i--) {
       if (!this.satellites[i].alive) {
@@ -353,6 +356,18 @@ export class DefenseSystem {
             continue;
           }
         }
+        // Check collision with other enemies at current position
+        for (const e of enemies) {
+          if (!e.alive || p.piercedEnemies.has(e)) continue;
+          const dx = e.worldX - p.worldX;
+          const dy = e.worldY - p.worldY;
+          if (dx * dx + dy * dy < 64) {
+            p.targetEnemy = e;
+            this.doProjectileHit(p, enemies);
+            break;
+          }
+        }
+        if (!p.alive) continue;
         // Continue in current direction
         const move = (p.speed * delta) / 1000;
         p.worldX += Math.cos(p.angle) * move;
@@ -506,12 +521,14 @@ export class DefenseSystem {
     // Missile: big AoE nuke
     if (p.drawType === "missile") {
       const nukeRadius = 80;
+      const nukeRadiusSq = nukeRadius * nukeRadius;
       for (const e of enemies) {
         if (!e.alive) continue;
         const dx = e.worldX - p.worldX;
         const dy = e.worldY - p.worldY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < nukeRadius) {
+        const distSq = dx * dx + dy * dy;
+        if (distSq < nukeRadiusSq) {
+          const dist = Math.sqrt(distSq);
           const falloff = Math.max(0.5, 1 - (dist / nukeRadius) * 0.5);
           e.takeDamage(Math.floor(p.damage * falloff));
         }
@@ -551,14 +568,14 @@ export class DefenseSystem {
     exclude: Set<Enemy>,
   ): Enemy | null {
     let best: Enemy | null = null;
-    let bestDist = range;
+    let bestDistSq = range * range;
     for (const e of enemies) {
       if (!e.alive || exclude.has(e)) continue;
       const dx = e.worldX - wx;
       const dy = e.worldY - wy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < bestDist) {
-        bestDist = dist;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
         best = e;
       }
     }
@@ -853,7 +870,7 @@ export class DefenseSystem {
       const extX = target.worldX + nx * 150;
       const extY = target.worldY + ny * 150;
       const beamWidth = this.getIonBeamWidth(sat);
-      drawIonBeamLine(g, sat.worldX, sat.worldY, extX, extY, beamWidth);
+      drawIonBeamLine(g, sat.worldX, sat.worldY, extX, extY, beamWidth, this._renderTime);
     }
 
     // Projectiles
@@ -876,6 +893,16 @@ export class DefenseSystem {
 
         case "tesla":
           drawTeslaBolt(g, p.worldX, p.worldY);
+          if (p.chainCount > 0 && p.targetEnemy?.alive) {
+            drawTeslaChain(
+              g,
+              p.worldX,
+              p.worldY,
+              p.targetEnemy.worldX,
+              p.targetEnemy.worldY,
+              this._renderTime + p.chainCount * 1000,
+            );
+          }
           break;
         case "emp":
           drawEMPWave(g, p.worldX, p.worldY);

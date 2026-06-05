@@ -89,6 +89,10 @@ export class UIManager {
       this.scene.waveSystem.forceStartWave(this.scene.time.now);
     });
 
+    document.getElementById("btn-spawn-wave-closer")?.addEventListener("click", () => {
+      this.scene.waveSystem.forceStartWaveCloser(this.scene.time.now);
+    });
+
     document.addEventListener("keydown", (e) => {
       const keyMap: Record<string, string> = {
         r: "road",
@@ -106,7 +110,7 @@ export class UIManager {
         v: "gravity",
         e: "emp",
         h: "shield",
-        d: "drone",
+        d: "shrapnel",
       };
       const key = e.key.toLowerCase();
       if (key === "escape") {
