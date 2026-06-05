@@ -4,53 +4,60 @@ export class PowerSystem {
   powerRadius = 20;
   tickInterval = 3000;
   lastTick = 0;
+  private _visited: Uint8Array = new Uint8Array(0);
+  private _queue: number[] = [];
 
   recalculate(worldMap: WorldMap): void {
-    for (let y = 0; y < worldMap.rows; y++) {
-      for (let x = 0; x < worldMap.cols; x++) {
-        worldMap.tiles[y][x].isPowered = false;
-      }
+    const cols = worldMap.cols;
+    const rows = worldMap.rows;
+    const needed = cols * rows;
+
+    // Reset power state
+    for (const { x, y } of worldMap.planetTiles) {
+      worldMap.tiles[y][x].isPowered = false;
     }
 
-    const plants: { x: number; y: number }[] = [];
-    for (let y = 0; y < worldMap.rows; y++) {
-      for (let x = 0; x < worldMap.cols; x++) {
-        if (worldMap.tiles[y][x].zone === "powerplant") {
-          plants.push({ x, y });
-        }
-      }
+    // Pre-allocate or reuse visited array
+    if (this._visited.length !== needed) {
+      this._visited = new Uint8Array(needed);
+    } else {
+      this._visited.fill(0);
     }
 
-    for (const plant of plants) {
-      this.bfsPower(worldMap, plant.x, plant.y);
+    for (const { x, y } of worldMap.planetTiles) {
+      if (worldMap.tiles[y][x].zone === "powerplant") {
+        this.bfsPower(worldMap, x, y, cols);
+      }
     }
   }
 
-  bfsPower(worldMap: WorldMap, startX: number, startY: number): void {
-    interface QueueItem {
-      x: number;
-      y: number;
-      dist: number;
-    }
-    const queue: QueueItem[] = [{ x: startX, y: startY, dist: 0 }];
-    const visited = new Set<string>();
+  bfsPower(worldMap: WorldMap, startX: number, startY: number, cols: number): void {
+    const visited = this._visited;
+    const queue = this._queue;
+    queue.length = 0;
+    queue.push((startY << 8) | startX); // dist=0 implicit
     let head = 0;
+    const maxDist = this.powerRadius;
 
     while (head < queue.length) {
-      const { x, y, dist } = queue[head++];
-      const key = `${x},${y}`;
+      const p = queue[head++];
+      const x = p & 0xff;
+      const y = (p >> 8) & 0xff;
+      const dist = p >> 16;
 
-      if (visited.has(key)) continue;
-      if (x < 0 || x >= worldMap.cols || y < 0 || y >= worldMap.rows) continue;
-      if (dist > this.powerRadius) continue;
+      if (x >= cols || y >= worldMap.rows || dist > maxDist) continue;
 
-      visited.add(key);
+      const idx = y * cols + x;
+      if (visited[idx]) continue;
+      visited[idx] = 1;
+
       worldMap.tiles[y][x].isPowered = true;
 
-      queue.push({ x: x + 1, y, dist: dist + 1 });
-      queue.push({ x: x - 1, y, dist: dist + 1 });
-      queue.push({ x, y: y + 1, dist: dist + 1 });
-      queue.push({ x, y: y - 1, dist: dist + 1 });
+      const nd = dist + 1;
+      queue.push((nd << 16) | (y << 8) | (x + 1));
+      queue.push((nd << 16) | (y << 8) | (x - 1));
+      queue.push((nd << 16) | ((y + 1) << 8) | x);
+      queue.push((nd << 16) | ((y - 1) << 8) | x);
     }
   }
 
