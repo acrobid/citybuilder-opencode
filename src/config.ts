@@ -39,7 +39,7 @@ export const SATELLITE_TYPES = {
     ring: "inner" as OrbitRing,
     fireRate: 400,
     damage: 8,
-    range: 140,
+    range: 250,
     cost: 150,
     projectileSpeed: 500,
     special: null,
@@ -49,7 +49,7 @@ export const SATELLITE_TYPES = {
     ring: "mid" as OrbitRing,
     fireRate: 1400,
     damage: 35,
-    range: 280,
+    range: 450,
     cost: 300,
     projectileSpeed: 300,
     special: null,
@@ -59,7 +59,7 @@ export const SATELLITE_TYPES = {
     ring: "inner" as OrbitRing,
     fireRate: 900,
     damage: 25,
-    range: 100,
+    range: 200,
     cost: 250,
     projectileSpeed: 350,
     special: "splash",
@@ -69,7 +69,7 @@ export const SATELLITE_TYPES = {
     ring: "mid" as OrbitRing,
     fireRate: 2200,
     damage: 60,
-    range: 350,
+    range: 550,
     cost: 400,
     projectileSpeed: 800,
     special: "pierce",
@@ -79,7 +79,7 @@ export const SATELLITE_TYPES = {
     ring: "outer" as OrbitRing,
     fireRate: 700,
     damage: 12,
-    range: 300,
+    range: 500,
     cost: 350,
     projectileSpeed: 600,
     special: "beam",
@@ -89,7 +89,7 @@ export const SATELLITE_TYPES = {
     ring: "inner" as OrbitRing,
     fireRate: 600,
     damage: 10,
-    range: 130,
+    range: 250,
     cost: 200,
     projectileSpeed: 450,
     special: "chain",
@@ -99,7 +99,7 @@ export const SATELLITE_TYPES = {
     ring: "outer" as OrbitRing,
     fireRate: 0,
     damage: 0,
-    range: 180,
+    range: 350,
     cost: 300,
     projectileSpeed: 0,
     special: "slow",
@@ -109,7 +109,7 @@ export const SATELLITE_TYPES = {
     ring: "mid" as OrbitRing,
     fireRate: 1800,
     damage: 15,
-    range: 250,
+    range: 450,
     cost: 350,
     projectileSpeed: 350,
     special: "stun",
@@ -119,7 +119,7 @@ export const SATELLITE_TYPES = {
     ring: "outer" as OrbitRing,
     fireRate: 0,
     damage: 5,
-    range: 200,
+    range: 400,
     cost: 400,
     projectileSpeed: 0,
     special: "shield",
@@ -129,7 +129,7 @@ export const SATELLITE_TYPES = {
     ring: "outer" as OrbitRing,
     fireRate: 3000,
     damage: 15,
-    range: 220,
+    range: 400,
     cost: 450,
     projectileSpeed: 0,
     special: "drone",
@@ -150,9 +150,9 @@ export const SYNERGY = {
 
 // ── Enemy Types ──
 export const ENEMY_TYPES = {
-  asteroid: { speed: 60, health: 30, damage: 1, radius: 8, score: 10, spawnDelay: 800 },
-  scout: { speed: 120, health: 15, damage: 1, radius: 6, score: 20, spawnDelay: 400 },
-  mothership: { speed: 25, health: 200, damage: 3, radius: 16, score: 100, spawnDelay: 2000 },
+  asteroid: { speed: 30, health: 80, damage: 1, radius: 24, score: 10, spawnDelay: 800 },
+  scout: { speed: 60, health: 40, damage: 1, radius: 20, score: 20, spawnDelay: 400 },
+  mothership: { speed: 15, health: 500, damage: 3, radius: 48, score: 100, spawnDelay: 2000 },
 } as const;
 export type EnemyTypeName = keyof typeof ENEMY_TYPES;
 
@@ -161,13 +161,13 @@ export const WAVE_CONFIG = {
   initialDelay: 3000, // 3s grace period before wave 1
   buildPhaseDuration: 30000, // 30s between waves (decreases by 500ms per wave)
   minInterval: 20000, // minimum time between waves
-  baseEnemies: 3, // asteroids in wave 1
-  enemiesPerWave: 2, // extra asteroids per wave level
+  baseEnemies: 30, // asteroids in wave 1
+  enemiesPerWave: 20, // extra asteroids per wave level
   scoutsStartWave: 2, // scouts first appear in wave 2
-  scoutsPerWave: 2, // extra scouts per wave level
+  scoutsPerWave: 20, // extra scouts per wave level
   mothershipEvery: 5, // mothership every Nth wave
-  waveReward: 200, // base money reward
-  waveRewardPerWave: 50, // extra money per wave level
+  waveReward: 2000, // base money reward
+  waveRewardPerWave: 500, // extra money per wave level
 } as const;
 
 // ── Colors ──

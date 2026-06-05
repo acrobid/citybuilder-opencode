@@ -59,6 +59,22 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(SPACE_COLORS.SPACE_BG);
     this.cameras.main.centerOn(PLANET_CENTER_X, PLANET_CENTER_Y);
     this.cameras.main.setZoom(1);
+
+    // Starter city: a pre-built tile so the game doesn't immediately end
+    const tc = this.worldMap.tiles;
+    const cx = 49,
+      cy = 49; // near planet center
+    tc[cy][cx].zone = "powerplant";
+    tc[cy][cx + 1].zone = "powerplant";
+    tc[cy + 1][cx].zone = "powerplant";
+    tc[cy + 1][cx + 1].zone = "powerplant";
+    tc[cy][cx + 2].zone = "road";
+    tc[cy][cx + 3].zone = "road";
+    tc[cy][cx + 4].zone = "residential";
+    tc[cy][cx + 4].level = 1;
+    this.worldMap.recalculateConnectivity();
+    window.gameState.population = 50;
+
     this.worldMap.render(this.graphics);
   }
 

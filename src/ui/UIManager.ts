@@ -1,10 +1,14 @@
 import type { Tile } from "../entities/Tile.js";
 import { WorldMap } from "../map/WorldMap.js";
+import type { DefenseSystem } from "../systems/DefenseSystem.js";
+import type { WaveSystem } from "../systems/WaveSystem.js";
 
 interface UIScene {
   worldMap: WorldMap;
   graphics: Phaser.GameObjects.Graphics;
   time: { now: number };
+  defenseSystem: DefenseSystem;
+  waveSystem: WaveSystem;
 }
 
 export class UIManager {
@@ -56,16 +60,23 @@ export class UIManager {
     });
 
     document.getElementById("btn-save")?.addEventListener("click", () => {
-      this.scene.worldMap.save();
+      const satellites = this.scene.defenseSystem.getSatelliteData();
+      this.scene.worldMap.save(satellites);
     });
 
     document.getElementById("btn-load")?.addEventListener("click", () => {
-      const loaded = WorldMap.load();
-      if (loaded) {
-        this.scene.worldMap = loaded;
+      const result = WorldMap.load();
+      if (result) {
+        this.scene.worldMap = result.map;
+        this.scene.defenseSystem.loadSatellites(result.satellites);
+        this.scene.waveSystem.loadState(window.gameState.wave, this.scene.time.now);
         this.scene.graphics.clear();
         this.scene.worldMap.render(this.scene.graphics);
       }
+    });
+
+    document.getElementById("btn-spawn-wave")?.addEventListener("click", () => {
+      this.scene.waveSystem.forceStartWave(this.scene.time.now);
     });
 
     document.addEventListener("keydown", (e) => {

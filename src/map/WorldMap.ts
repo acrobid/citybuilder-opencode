@@ -169,7 +169,7 @@ export class WorldMap {
     }
   }
 
-  save(): void {
+  save(satellites?: { type: string; ring: string; angle: number }[]): void {
     const data = {
       tiles: this.tiles.map((row) =>
         row.map((tile) => ({
@@ -186,12 +186,20 @@ export class WorldMap {
         income: window.gameState.income,
         expenses: window.gameState.expenses,
         selectedTool: window.gameState.selectedTool,
+        wave: window.gameState.wave,
+        waveActive: window.gameState.waveActive,
+        enemiesRemaining: window.gameState.enemiesRemaining,
+        gameOver: window.gameState.gameOver,
       },
+      satellites: satellites ?? [],
     };
     localStorage.setItem("citybuilder-save", JSON.stringify(data));
   }
 
-  static load(): WorldMap | null {
+  static load(): {
+    map: WorldMap;
+    satellites: { type: string; ring: string; angle: number }[];
+  } | null {
     const raw = localStorage.getItem("citybuilder-save");
     if (!raw) return null;
 
@@ -217,6 +225,6 @@ export class WorldMap {
       }
     }
 
-    return map;
+    return { map, satellites: data.satellites ?? [] };
   }
 }

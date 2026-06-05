@@ -109,8 +109,8 @@ export function drawOrbitRings(g: Phaser.GameObjects.Graphics): void {
       const angle = (s / steps) * Math.PI * 2;
       const rx = centerX + Math.cos(angle) * r;
       const ry = centerY + Math.sin(angle) * r;
-      g.fillStyle(SPACE_COLORS.ORBIT_RING, 0.3);
-      g.fillRect(Math.round(rx), Math.round(ry), 2, 2);
+      g.fillStyle(SPACE_COLORS.ORBIT_RING, 0.5);
+      g.fillRect(Math.round(rx) - 1, Math.round(ry) - 1, 3, 3);
     }
   }
 }

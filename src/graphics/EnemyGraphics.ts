@@ -92,7 +92,8 @@ export function drawExplosion(
   y: number,
   r: number,
   alpha: number,
+  color: number = SPACE_COLORS.EXPLOSION,
 ): void {
-  fillCircle(g, Math.round(x), Math.round(y), r, SPACE_COLORS.EXPLOSION, alpha);
+  fillCircle(g, Math.round(x), Math.round(y), r, color, alpha);
   fillCircle(g, Math.round(x), Math.round(y), Math.round(r * 0.6), 0xffdd44, alpha * 0.7);
 }

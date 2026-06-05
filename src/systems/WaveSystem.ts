@@ -4,7 +4,7 @@ import type { WorldMap } from "../map/WorldMap.js";
 
 function randomSpawnPos(): { x: number; y: number } {
   const angle = Math.random() * Math.PI * 2;
-  const spawnDist = 2000; // far enough to be visible but take time to approach
+  const spawnDist = 2500;
   return {
     x: PLANET_CENTER_X + Math.cos(angle) * spawnDist,
     y: PLANET_CENTER_Y + Math.sin(angle) * spawnDist,
@@ -231,5 +231,28 @@ export class WaveSystem {
   }
   getWaveClearReward(): number {
     return this.waveClearReward;
+  }
+
+  forceStartWave(time: number): void {
+    this.startNextWave(time);
+  }
+
+  loadState(waveNumber: number, time: number): void {
+    this.waveNumber = waveNumber;
+    this.waveActive = false;
+    this.inBuildPhase = true;
+    this.waveStartTime = 0;
+    this.spawnQueue = [];
+    this.spawnIndex = 0;
+    this.gameStarted = true;
+    this.enemies = [];
+    window.gameState.wave = waveNumber;
+    window.gameState.waveActive = false;
+    window.gameState.enemiesRemaining = 0;
+    const interval = Math.max(
+      WAVE_CONFIG.minInterval,
+      WAVE_CONFIG.buildPhaseDuration - waveNumber * 500,
+    );
+    this.buildPhaseEnd = time + interval;
   }
 }

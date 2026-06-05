@@ -162,9 +162,9 @@ export function drawRangeCircle(
 
 export function drawLaserBeam(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   g.fillStyle(SPACE_COLORS.LASER_BEAM, 1);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+  g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 5, 5);
   g.fillStyle(0xffffff, 0.7);
-  g.fillRect(Math.round(x), Math.round(y), 1, 1);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
 }
 
 export function drawMissileProj(
@@ -174,57 +174,57 @@ export function drawMissileProj(
   angle: number,
 ): void {
   // Trail
-  const tx = Math.round(x - Math.cos(angle) * 4);
-  const ty = Math.round(y - Math.sin(angle) * 4);
+  const tx = Math.round(x - Math.cos(angle) * 6);
+  const ty = Math.round(y - Math.sin(angle) * 6);
   g.fillStyle(SPACE_COLORS.MISSILE_TRAIL, 0.5);
-  g.fillRect(tx - 1, ty - 1, 3, 3);
+  g.fillRect(tx - 2, ty - 2, 5, 5);
   // Body
   g.fillStyle(SPACE_COLORS.MISSILE_TRAIL, 1);
-  g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4);
+  g.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
   g.fillStyle(0xffffff, 0.8);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
 }
 
 export function drawPlasmaBlob(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
-  fillCircle(g, Math.round(x), Math.round(y), 3, SPACE_COLORS.PLASMA_BLOB, 1);
-  fillCircle(g, Math.round(x), Math.round(y), 1, 0xffffff, 0.8);
+  fillCircle(g, Math.round(x), Math.round(y), 5, SPACE_COLORS.PLASMA_BLOB, 1);
+  fillCircle(g, Math.round(x), Math.round(y), 2, 0xffffff, 0.8);
 }
 
 export function drawRailgunTracer(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   g.fillStyle(SPACE_COLORS.RAILGUN_TRACER, 1);
-  g.fillRect(Math.round(x) - 3, Math.round(y) - 1, 6, 2);
+  g.fillRect(Math.round(x) - 5, Math.round(y) - 2, 10, 4);
   g.fillStyle(0xffffff, 0.9);
-  g.fillRect(Math.round(x) - 1, Math.round(y), 2, 1);
+  g.fillRect(Math.round(x) - 2, Math.round(y) - 1, 4, 2);
 }
 
 export function drawIonBolt(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   g.fillStyle(SPACE_COLORS.ION_BEAM, 1);
-  g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4);
+  g.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
   g.fillStyle(0xffffff, 0.6);
-  g.fillRect(Math.round(x), Math.round(y), 1, 1);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
 }
 
 export function drawTeslaBolt(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   g.fillStyle(SPACE_COLORS.TESLA_ARC, 1);
-  g.fillRect(Math.round(x) - 2, Math.round(y) - 1, 4, 2);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 2, 2, 4);
+  g.fillRect(Math.round(x) - 3, Math.round(y) - 1, 6, 3);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 3, 3, 6);
   g.fillStyle(0xffffff, 0.9);
-  g.fillRect(Math.round(x), Math.round(y), 1, 1);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
 }
 
 export function drawEMPWave(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
-  fillCircle(g, Math.round(x), Math.round(y), 3, 0xffff44, 0.8);
-  fillCircle(g, Math.round(x), Math.round(y), 5, 0xffff44, 0.3);
+  fillCircle(g, Math.round(x), Math.round(y), 5, 0xffff44, 0.8);
+  fillCircle(g, Math.round(x), Math.round(y), 8, 0xffff44, 0.3);
 }
 
 export function drawShieldWave(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
-  fillCircle(g, Math.round(x), Math.round(y), 4, SPACE_COLORS.SHIELD_ARC, 0.6);
-  fillCircle(g, Math.round(x), Math.round(y), 6, SPACE_COLORS.SHIELD_ARC, 0.2);
+  fillCircle(g, Math.round(x), Math.round(y), 6, SPACE_COLORS.SHIELD_ARC, 0.6);
+  fillCircle(g, Math.round(x), Math.round(y), 10, SPACE_COLORS.SHIELD_ARC, 0.2);
 }
 
 export function drawDroneProj(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
   g.fillStyle(SPACE_COLORS.DRONE_BODY, 1);
-  g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4);
+  g.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
   g.fillStyle(0xffcc44, 0.7);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
 }

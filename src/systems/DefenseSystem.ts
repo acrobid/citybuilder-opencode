@@ -25,6 +25,10 @@ interface Projectile {
   alive: boolean;
   drawType: SatelliteType;
   angle: number;
+  originX: number;
+  originY: number;
+  maxDist: number;
+  distTraveled: number;
   // specials
   piercedEnemies: Set<Enemy>; // railgun
   chainCount: number; // tesla
@@ -41,13 +45,25 @@ interface Drone {
   speed: number;
 }
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: number;
+}
+
 export class DefenseSystem {
   satellites: OrbitalSatellite[] = [];
   projectiles: Projectile[] = [];
   drones: Drone[] = [];
   private cooldowns: Map<OrbitalSatellite, number> = new Map();
   // Explosion effects (position, radius, remaining time)
-  explosions: { x: number; y: number; r: number; time: number }[] = [];
+  explosions: { x: number; y: number; r: number; time: number; color: number }[] = [];
+  particles: Particle[] = [];
 
   /** Place a satellite on the nearest ring at the cursor angle. Returns false if can't afford. */
   placeSatellite(type: SatelliteType, angle: number, ring: OrbitRing): boolean {
@@ -176,6 +192,10 @@ export class DefenseSystem {
         alive: true,
         drawType: sat.type,
         angle,
+        originX: sat.worldX,
+        originY: sat.worldY,
+        maxDist: config.range * 1.5,
+        distTraveled: 0,
         piercedEnemies: new Set(),
         chainCount: 0,
         droneLifetime: 0,
@@ -193,54 +213,47 @@ export class DefenseSystem {
         continue;
       }
 
-      // If target is dead, find new target or die
-      if (!p.targetEnemy || !p.targetEnemy.alive) {
+      if (p.targetEnemy && p.targetEnemy.alive) {
+        // Move toward target
+        const dx = p.targetEnemy.worldX - p.worldX;
+        const dy = p.targetEnemy.worldY - p.worldY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 8) {
+          // Hit!
+          this.doProjectileHit(p, enemies);
+          continue;
+        }
+
+        const move = (p.speed * delta) / 1000;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        p.worldX += nx * move;
+        p.worldY += ny * move;
+        p.angle = Math.atan2(ny, nx);
+        p.distTraveled += move;
+      } else {
+        // Target dead: tesla tries to chain, others fly through
         if (p.drawType === "tesla" && p.chainCount < 2) {
-          // Tesla chains to next enemy
           const next = this.findClosestEnemyAt(p.worldX, p.worldY, 60, enemies, p.piercedEnemies);
           if (next) {
             p.targetEnemy = next;
             p.chainCount++;
             p.damage = Math.floor(p.damage * 0.5);
-          } else {
-            p.alive = false;
             continue;
           }
-        } else if (p.drawType === "railgun") {
-          // Railgun keeps going in same direction
-          p.worldX += (Math.cos(p.angle) * (p.speed * delta)) / 1000;
-          p.worldY += (Math.sin(p.angle) * (p.speed * delta)) / 1000;
-          // Check if off screen
-          if (
-            Math.abs(p.worldX - PLANET_CENTER_X) > 1500 ||
-            Math.abs(p.worldY - PLANET_CENTER_Y) > 1500
-          ) {
-            p.alive = false;
-          }
-          continue;
-        } else {
-          p.alive = false;
-          continue;
         }
+        // Continue in current direction
+        const move = (p.speed * delta) / 1000;
+        p.worldX += Math.cos(p.angle) * move;
+        p.worldY += Math.sin(p.angle) * move;
+        p.distTraveled += move;
       }
 
-      // Move toward target
-      const dx = p.targetEnemy.worldX - p.worldX;
-      const dy = p.targetEnemy.worldY - p.worldY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 8) {
-        // Hit!
-        this.doProjectileHit(p, enemies);
-        continue;
+      // Check range limit
+      if (p.distTraveled >= p.maxDist) {
+        p.alive = false;
       }
-
-      const move = (p.speed * delta) / 1000;
-      const nx = dx / dist;
-      const ny = dy / dist;
-      p.worldX += nx * move;
-      p.worldY += ny * move;
-      p.angle = Math.atan2(ny, nx);
     }
 
     // Update explosions
@@ -250,14 +263,63 @@ export class DefenseSystem {
         this.explosions.splice(i, 1);
       }
     }
+
+    // Update particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const pt = this.particles[i];
+      pt.life -= delta;
+      if (pt.life <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+      pt.x += pt.vx * (delta / 1000);
+      pt.y += pt.vy * (delta / 1000);
+      pt.vx *= 0.97;
+      pt.vy *= 0.97;
+    }
+  }
+
+  private getExplosionColor(type: SatelliteType): number {
+    switch (type) {
+      case "laser":
+        return 0x00ffff;
+      case "missile":
+        return 0xff8800;
+      case "plasma":
+        return 0x00ff88;
+      case "railgun":
+        return 0xff4444;
+      case "ion":
+        return 0x88aaff;
+      case "tesla":
+        return 0x00ccff;
+      case "emp":
+        return 0xffff44;
+      case "shield":
+        return 0x88ccff;
+      case "drone":
+        return 0xffaa00;
+      default:
+        return 0xffaa00;
+    }
   }
 
   private doProjectileHit(p: Projectile, enemies: Enemy[]): void {
     const config = SATELLITE_TYPES[p.drawType];
+    const color = this.getExplosionColor(p.drawType);
 
     if (config.special === "pierce" && p.targetEnemy) {
-      // Railgun: damage target and continue
-      p.targetEnemy.takeDamage(p.damage);
+      // Railgun: damage target, explode if killed, continue
+      const killed = p.targetEnemy.takeDamage(p.damage);
+      if (killed) {
+        this.addExplosion(
+          p.targetEnemy.worldX,
+          p.targetEnemy.worldY,
+          p.targetEnemy.radius * 1.5,
+          500,
+          color,
+        );
+      }
       p.piercedEnemies.add(p.targetEnemy);
       p.targetEnemy = null; // will continue in update loop
       return;
@@ -277,24 +339,36 @@ export class DefenseSystem {
         }
       }
       // Kill target and explode
-      if (p.targetEnemy.alive) p.targetEnemy.takeDamage(Number.MAX_SAFE_INTEGER); // force kill
-      this.addExplosion(p.worldX, p.worldY, 6, 200);
+      if (p.targetEnemy.alive) p.targetEnemy.takeDamage(Number.MAX_SAFE_INTEGER);
+      this.addExplosion(p.worldX, p.worldY, 16, 500, color);
       p.alive = false;
       return;
     }
 
     if (config.special === "splash" && p.targetEnemy) {
       // Plasma: damage target + splash nearby
-      p.targetEnemy.takeDamage(p.damage);
+      const killed = p.targetEnemy.takeDamage(p.damage);
+      if (killed) {
+        this.addExplosion(
+          p.targetEnemy.worldX,
+          p.targetEnemy.worldY,
+          p.targetEnemy.radius * 1.5,
+          500,
+          color,
+        );
+      }
       for (const e of enemies) {
         if (!e.alive || e === p.targetEnemy) continue;
         const dx = e.worldX - p.worldX;
         const dy = e.worldY - p.worldY;
         if (Math.sqrt(dx * dx + dy * dy) < 40) {
-          e.takeDamage(Math.floor(p.damage * 0.5));
+          const splatKill = e.takeDamage(Math.floor(p.damage * 0.5));
+          if (splatKill) {
+            this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 400, color);
+          }
         }
       }
-      this.addExplosion(p.worldX, p.worldY, 8, 250);
+      this.addExplosion(p.worldX, p.worldY, 20, 600, color);
       p.alive = false;
       return;
     }
@@ -309,29 +383,56 @@ export class DefenseSystem {
         const dy = e.worldY - startY;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 20) {
-          // thin beam, check proximity to line
-          e.takeDamage(p.damage);
+          const killed = e.takeDamage(p.damage);
+          if (killed) {
+            this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 500, color);
+          }
         }
       }
-      p.targetEnemy.takeDamage(p.damage);
+      const killed = p.targetEnemy.takeDamage(p.damage);
+      if (killed) {
+        this.addExplosion(
+          p.targetEnemy.worldX,
+          p.targetEnemy.worldY,
+          p.targetEnemy.radius * 1.5,
+          500,
+          color,
+        );
+      }
+      this.addExplosion(p.worldX, p.worldY, 15, 400, color);
       p.alive = false;
       return;
     }
 
     if (config.special === "stun" && p.targetEnemy) {
       // EMP: damage + stun
-      p.targetEnemy.takeDamage(p.damage);
+      const killed = p.targetEnemy.takeDamage(p.damage);
+      if (killed) {
+        this.addExplosion(
+          p.targetEnemy.worldX,
+          p.targetEnemy.worldY,
+          p.targetEnemy.radius * 1.5,
+          600,
+          color,
+        );
+      }
       p.targetEnemy.stunTimer = 1500;
-      this.addExplosion(p.worldX, p.worldY, 10, 300);
+      this.addExplosion(p.worldX, p.worldY, 25, 700, color);
       p.alive = false;
       return;
     }
 
     // Default: direct hit
     if (p.targetEnemy) {
-      p.targetEnemy.takeDamage(p.damage);
-      if (!p.targetEnemy.alive) {
-        this.addExplosion(p.targetEnemy.worldX, p.targetEnemy.worldY, p.targetEnemy.radius, 300);
+      const killed = p.targetEnemy.takeDamage(p.damage);
+      if (killed) {
+        this.addExplosion(
+          p.targetEnemy.worldX,
+          p.targetEnemy.worldY,
+          p.targetEnemy.radius * 1.5,
+          600,
+          color,
+        );
       }
     }
     p.alive = false;
@@ -397,7 +498,10 @@ export class DefenseSystem {
         const ny = dy / dist;
         e.worldX += nx * 3;
         e.worldY += ny * 3;
-        e.takeDamage(5);
+        const shieldKill = e.takeDamage(5);
+        if (shieldKill) {
+          this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 400, 0x88ccff);
+        }
         e.stunTimer = 200;
       }
     }
@@ -444,7 +548,16 @@ export class DefenseSystem {
       const dy = d.targetEnemy.worldY - d.worldY;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < 6) {
-        d.targetEnemy.takeDamage(d.damage);
+        const killed = d.targetEnemy.takeDamage(d.damage);
+        if (killed) {
+          this.addExplosion(
+            d.targetEnemy.worldX,
+            d.targetEnemy.worldY,
+            d.targetEnemy.radius * 1.5,
+            400,
+            0xffaa00,
+          );
+        }
         this.drones.splice(i, 1);
         continue;
       }
@@ -456,8 +569,38 @@ export class DefenseSystem {
 
   // ── Effects ──
 
-  private addExplosion(x: number, y: number, r: number, duration: number): void {
-    this.explosions.push({ x, y, r, time: duration });
+  private addExplosion(
+    x: number,
+    y: number,
+    r: number,
+    duration: number,
+    color: number = 0xffaa00,
+  ): void {
+    this.explosions.push({ x, y, r, time: duration, color });
+    this.spawnExplosionParticles(x, y, 15, Math.max(2, Math.floor(r / 2)), color);
+  }
+
+  private spawnExplosionParticles(
+    x: number,
+    y: number,
+    count: number,
+    size: number,
+    color: number,
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 140;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 500 + Math.random() * 500,
+        maxLife: 1000,
+        size: size * (0.5 + Math.random() * 1.0),
+        color: Math.random() > 0.4 ? color : 0xffdd44,
+      });
+    }
   }
 
   // ── Save/Load helpers ──
@@ -523,8 +666,17 @@ export class DefenseSystem {
 
     // Explosions
     for (const ex of this.explosions) {
-      const alpha = Math.max(0, ex.time / 500);
-      drawExplosion(g, ex.x, ex.y, ex.r, alpha);
+      const t = Math.max(0, ex.time / 500);
+      const alpha = Math.min(1, t * 2);
+      const expand = 1 + (1 - t) * 1.5;
+      drawExplosion(g, ex.x, ex.y, Math.round(ex.r * expand), alpha, ex.color);
+    }
+
+    // Particles
+    for (const pt of this.particles) {
+      const alpha = Math.max(0, pt.life / pt.maxLife);
+      g.fillStyle(pt.color, alpha * 0.8);
+      g.fillCircle(Math.round(pt.x), Math.round(pt.y), Math.max(1, Math.round(pt.size * alpha)));
     }
   }
 }
