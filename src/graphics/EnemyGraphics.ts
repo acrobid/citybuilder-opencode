@@ -129,12 +129,12 @@ function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   drawHealthBar(g, enemy);
 }
 
-function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
+function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: number): void {
   const cx = Math.round(enemy.worldX);
   const cy = Math.round(enemy.worldY);
   const r = enemy.radius;
 
-  const t = Date.now();
+  const t = time;
 
   // Outer hull — hexagonal/saucer shape
   const hullVerts: PhaserMath.Vector2[] = [];
@@ -200,7 +200,7 @@ function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   drawHealthBar(g, enemy);
 }
 
-export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
+export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: number): void {
   switch (enemy.type) {
     case "asteroid":
       drawAsteroid(g, enemy);
@@ -209,7 +209,7 @@ export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
       drawScout(g, enemy);
       break;
     case "mothership":
-      drawMothership(g, enemy);
+      drawMothership(g, enemy, time);
       break;
   }
 }

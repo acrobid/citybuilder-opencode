@@ -112,7 +112,7 @@ export class GameScene extends Phaser.Scene {
         drawSatellite(this.graphics, sat);
       }
       for (const enemy of this.waveSystem.enemies) {
-        if (enemy.alive) drawEnemy(this.graphics, enemy);
+        if (enemy.alive) drawEnemy(this.graphics, enemy, time);
       }
       for (const b of this.waveSystem.enemyBullets) {
         if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY, b.vx, b.vy);
@@ -165,7 +165,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     for (const enemy of this.waveSystem.enemies) {
-      if (enemy.alive) drawEnemy(this.graphics, enemy);
+      if (enemy.alive) drawEnemy(this.graphics, enemy, time);
     }
 
     // Enemy bullets
