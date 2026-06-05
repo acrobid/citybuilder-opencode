@@ -247,7 +247,7 @@ export class WaveSystem {
               angle: Math.atan2(cdy, cdx),
               startDist: cdist,
               elapsed: 0,
-              duration: 600,
+              duration: 1800,
             });
           }
           break;

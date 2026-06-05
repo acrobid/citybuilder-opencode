@@ -1,5 +1,5 @@
 import Phaser, { Math as PhaserMath } from "phaser";
-import { SPACE_COLORS, PLANET_CENTER_X, PLANET_CENTER_Y } from "../config.js";
+import { SPACE_COLORS, PLANET_CENTER_X, PLANET_CENTER_Y, PLANET_RADIUS } from "../config.js";
 import { Enemy } from "../entities/Enemy.js";
 import { fillCircle } from "./SpaceGraphics.js";
 
@@ -279,23 +279,99 @@ export function drawSatelliteCrash(
   const startX = PLANET_CENTER_X + Math.cos(crash.angle) * crash.startDist;
   const startY = PLANET_CENTER_Y + Math.sin(crash.angle) * crash.startDist;
 
-  const numDebris = 10;
-  for (let i = 0; i < numDebris; i++) {
-    const p = i / (numDebris - 1);
+  // Altitude ratio (1 = orbit, 0 = surface) for atmospheric effects
+  const altitude = Math.max(
+    0,
+    1 -
+      (crash.startDist - PLANET_RADIUS > 0
+        ? Math.hypot(crash.worldX - PLANET_CENTER_X, crash.worldY - PLANET_CENTER_Y) - PLANET_RADIUS
+        : 0) /
+        (crash.startDist - PLANET_RADIUS),
+  );
+
+  // ── Atmosphere entry glow ──
+  if (altitude > 0.3) {
+    const glowR = 16 + altitude * 20;
+    const glowAlpha = altitude * 0.2 * (1 - t * 0.3);
+    g.fillStyle(0xff4400, glowAlpha);
+    g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), Math.round(glowR));
+    g.fillStyle(0xff8800, glowAlpha * 0.6);
+    g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), Math.round(glowR * 0.6));
+  }
+
+  // ── Smoke trail ──
+  const numSmoke = 8;
+  for (let i = 0; i < numSmoke; i++) {
+    const p = i / numSmoke;
     const px = startX + (crash.worldX - startX) * p;
     const py = startY + (crash.worldY - startY) * p;
-    const alpha = (1 - t) * 0.5 + (p > 0.7 ? (1 - p) * 0.7 : 0);
+    const age = (1 - p) * t;
+    if (age <= 0) continue;
+    const drift = ((i * 7 + t * 50) % 12) - 6;
+    const smokeAlpha = age * 0.25;
+    const smokeSize = 4 + age * 8 + (1 - p) * 6;
+    g.fillStyle(0x555555, smokeAlpha);
+    g.fillCircle(Math.round(px + drift), Math.round(py + drift - age * 4), Math.round(smokeSize));
+    g.fillStyle(0x888888, smokeAlpha * 0.5);
+    g.fillCircle(
+      Math.round(px + drift - 3),
+      Math.round(py + drift - 2),
+      Math.round(smokeSize * 0.6),
+    );
+  }
+
+  // ── Fire trail ──
+  const numFire = 14;
+  for (let i = 0; i < numFire; i++) {
+    const p = i / numFire;
+    const px = startX + (crash.worldX - startX) * p;
+    const py = startY + (crash.worldY - startY) * p;
+    const fade = (1 - p) * (1 - t * 0.4);
+    if (fade <= 0) continue;
+    const flicker = Math.sin(i * 2.3 + t * 30) * 0.3 + 0.7;
+    const fireAlpha = fade * 0.6 * flicker;
+    const fireSize = 2 + (1 - p) * 5;
+    g.fillStyle(0xff4400, fireAlpha);
+    g.fillCircle(Math.round(px + ((i % 3) - 1) * 2), Math.round(py), Math.round(fireSize));
+    g.fillStyle(0xff8800, fireAlpha * 0.8);
+    g.fillCircle(Math.round(px + ((i % 3) - 1) * 2), Math.round(py), Math.round(fireSize * 0.6));
+    g.fillStyle(0xffcc44, fireAlpha * 0.5);
+    g.fillCircle(Math.round(px + ((i % 3) - 1) * 2), Math.round(py), Math.round(fireSize * 0.3));
+  }
+
+  // ── Sparks / debris ──
+  for (let i = 0; i < 10; i++) {
+    const p = i / 9;
+    const px = startX + (crash.worldX - startX) * p;
+    const py = startY + (crash.worldY - startY) * p;
+    const alpha = (1 - t) * (1 - p * 0.5);
     if (alpha <= 0) continue;
-    const size = 1 + (1 - p) * 3;
-    g.fillStyle(0xff6600, alpha * 0.7);
-    g.fillRect(Math.round(px - size / 2), Math.round(py - size / 2), size, size);
-    if (i % 2 === 0) {
-      g.fillStyle(0xffcc44, alpha * 0.4);
-      g.fillRect(Math.round(px), Math.round(py), 1, 1);
+    const offsetX = Math.sin(i * 5.1 + t * 20) * 8 * (1 - p + 0.2);
+    const offsetY = Math.cos(i * 3.7 + t * 15) * 6 * (1 - p + 0.2);
+    const size = 1 + (1 - p) * 2;
+    g.fillStyle(0xff6600, alpha * 0.8);
+    g.fillRect(
+      Math.round(px + offsetX - size / 2),
+      Math.round(py + offsetY - size / 2),
+      size,
+      size,
+    );
+    if (i % 3 === 0) {
+      g.fillStyle(0xffffff, alpha * 0.5);
+      g.fillRect(Math.round(px + offsetX), Math.round(py + offsetY), 1, 1);
     }
   }
 
-  const coreAlpha = 0.5 + (1 - t) * 0.5;
-  fillCircle(g, Math.round(crash.worldX), Math.round(crash.worldY), 4, 0xffaa44, coreAlpha);
-  fillCircle(g, Math.round(crash.worldX), Math.round(crash.worldY), 2, 0xffffff, coreAlpha * 0.7);
+  // ── Core fireball ──
+  const corePulse = 0.8 + Math.sin(t * 20) * 0.2;
+  const coreSize = 6 + (1 - t) * 4 * corePulse;
+  const coreAlpha = 0.6 + (1 - t) * 0.4;
+  g.fillStyle(0xff2200, coreAlpha * 0.6);
+  g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), Math.round(coreSize * 1.4));
+  g.fillStyle(0xff8800, coreAlpha * 0.8);
+  g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), Math.round(coreSize));
+  g.fillStyle(0xffcc44, coreAlpha);
+  g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), Math.round(coreSize * 0.5));
+  g.fillStyle(0xffffff, coreAlpha * 0.7);
+  g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), 2);
 }
