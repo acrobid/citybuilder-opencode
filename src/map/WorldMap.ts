@@ -9,6 +9,12 @@ import {
   drawIndustrialTile,
   drawPowerPlantTile,
 } from "../graphics/TileGraphics.js";
+import {
+  drawSpaceBackground,
+  drawPlanetRim,
+  drawOrbitRings,
+  isTileOnPlanet,
+} from "../graphics/SpaceGraphics.js";
 
 export class WorldMap {
   cols: number;
@@ -63,9 +69,20 @@ export class WorldMap {
     return this.getNeighbors(tile).some((n) => n.zone === "road");
   }
 
+  isOnPlanetSurface(tileX: number, tileY: number): boolean {
+    return isTileOnPlanet(tileX, tileY);
+  }
+
   canPlace2x2(tile: Tile): boolean {
     const { x, y } = tile;
     if (x + 1 >= this.cols || y + 1 >= this.rows) return false;
+    if (
+      !this.isOnPlanetSurface(x, y) ||
+      !this.isOnPlanetSurface(x + 1, y) ||
+      !this.isOnPlanetSurface(x, y + 1) ||
+      !this.isOnPlanetSurface(x + 1, y + 1)
+    )
+      return false;
     const tiles = [
       this.tiles[y][x],
       this.tiles[y][x + 1],
@@ -91,11 +108,23 @@ export class WorldMap {
   render(graphics: Phaser.GameObjects.Graphics): void {
     graphics.clear();
 
+    // Draw space background first (fills entire map, adds stars outside planet)
+    drawSpaceBackground(graphics);
+
+    // Draw planet atmospheric rim
+    drawPlanetRim(graphics);
+
+    // Draw orbit rings
+    drawOrbitRings(graphics);
+
     for (let y = 0; y < this.rows; y++) {
       for (let x = 0; x < this.cols; x++) {
         const tile = this.tiles[y][x];
         const px = x * TILE_SIZE;
         const py = y * TILE_SIZE;
+
+        // Skip tiles outside the planet circle (they're already space)
+        if (!this.isOnPlanetSurface(x, y)) continue;
 
         switch (tile.zone) {
           case "road":
@@ -118,6 +147,7 @@ export class WorldMap {
             break;
         }
 
+        // Power overlay (keep existing logic)
         if (tile.zone !== "empty" && tile.zone !== "road" && !tile.isPowered) {
           graphics.fillStyle(0x000000, 0.35);
           graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
@@ -131,6 +161,7 @@ export class WorldMap {
           graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
         }
 
+        // Grid lines
         graphics.fillStyle(COLORS.GRID_LINE, 0.1);
         graphics.fillRect(px, py, TILE_SIZE, 1);
         graphics.fillRect(px, py, 1, TILE_SIZE);

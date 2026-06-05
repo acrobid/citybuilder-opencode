@@ -9,6 +9,10 @@ declare global {
       date: number;
       income: number;
       expenses: number;
+      wave: number;
+      waveActive: boolean;
+      enemiesRemaining: number;
+      gameOver: boolean;
     };
   }
 }

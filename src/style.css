@@ -75,3 +75,50 @@ body {
   color: #999;
   min-height: 40px;
 }
+
+.toolbar-label {
+  font-size: 10px;
+  color: #6688aa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 4px 0 2px 4px;
+}
+
+#wave-info {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 6px 0;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+}
+
+#wave-info #stat-phase {
+  color: #88aacc;
+}
+
+#toolbar {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+}
+
+#game-over {
+  padding: 12px;
+  background: #441111;
+  border-radius: 4px;
+  text-align: center;
+}
+
+#game-over button {
+  padding: 6px 14px;
+  border: 1px solid #882222;
+  background: #aa3333;
+  color: #ddd;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+#game-over button:hover {
+  background: #cc4444;
+}

@@ -53,6 +53,7 @@ export function canPlace(
 ): boolean {
   if (!tile) return false;
   if (tile.zone !== "empty") return false;
+  if (!worldMap.isOnPlanetSurface(tile.x, tile.y)) return false;
 
   const building = BUILDING_TYPES[buildingType];
   if (!building) return false;

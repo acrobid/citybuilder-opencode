@@ -10,6 +10,10 @@ window.gameState = {
   date: 0,
   income: 0,
   expenses: 0,
+  wave: 0,
+  waveActive: false,
+  enemiesRemaining: 0,
+  gameOver: false,
 };
 
 new Phaser.Game({

@@ -16,6 +16,11 @@ export class UIManager {
   dateEl: HTMLElement | null;
   tileInfoEl: HTMLElement | null;
   toolbarButtons: NodeListOf<HTMLButtonElement>;
+  phaseEl: HTMLElement | null;
+  waveEl: HTMLElement | null;
+  enemiesEl: HTMLElement | null;
+  gameOverEl: HTMLElement | null;
+  goWaveEl: HTMLElement | null;
 
   constructor(scene: UIScene) {
     this.scene = scene;
@@ -26,6 +31,14 @@ export class UIManager {
     this.dateEl = document.getElementById("stat-date");
     this.tileInfoEl = document.getElementById("tile-info");
     this.toolbarButtons = document.querySelectorAll("#toolbar button[data-tool]");
+    this.phaseEl = document.getElementById("stat-phase");
+    this.waveEl = document.getElementById("stat-wave");
+    this.enemiesEl = document.getElementById("stat-enemies");
+    this.gameOverEl = document.getElementById("game-over");
+    this.goWaveEl = document.getElementById("go-wave");
+    document.getElementById("btn-restart")?.addEventListener("click", () => {
+      location.reload();
+    });
     this.setupToolbar();
   }
 
@@ -60,9 +73,19 @@ export class UIManager {
         r: "road",
         z: "residential",
         c: "commercial",
-        i: "industrial",
-        p: "powerplant",
+        u: "industrial",
+        w: "powerplant",
         b: "bulldoze",
+        j: "laser",
+        m: "missile",
+        a: "plasma",
+        g: "railgun",
+        o: "ion",
+        t: "tesla",
+        v: "gravity",
+        e: "emp",
+        h: "shield",
+        d: "drone",
       };
       const key = e.key.toLowerCase();
       if (key === "escape") {
@@ -96,6 +119,15 @@ export class UIManager {
       const year = Math.floor(gs.date / 12) + 1;
       this.dateEl.textContent = `Month ${month}, Year ${year}`;
     }
+    const phase = gs.waveActive ? "Defending" : "Building";
+    if (this.phaseEl) this.phaseEl.textContent = phase;
+    if (this.waveEl) this.waveEl.textContent = String(gs.wave);
+    if (this.enemiesEl) this.enemiesEl.textContent = String(gs.enemiesRemaining);
+  }
+
+  showGameOver(wave: number): void {
+    if (this.gameOverEl) this.gameOverEl.style.display = "block";
+    if (this.goWaveEl) this.goWaveEl.textContent = `Survived ${wave} waves`;
   }
 
   showTileInfo(tile: Tile | null): void {

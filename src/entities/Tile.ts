@@ -13,6 +13,7 @@ export class Tile {
   level = 0;
   isPowered = false;
   roadConnected = false;
+  health = 0;
 
   constructor(x: number, y: number) {
     this.x = x;

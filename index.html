@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>City Builder</title>
+    <title>City Defender</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -17,18 +17,42 @@
           <div>Expenses: $<span id="stat-expenses">0</span>/mo</div>
           <div>Date: <span id="stat-date">Month 1, Year 1</span></div>
         </div>
+        <div id="wave-info">
+          <div>Phase: <span id="stat-phase">Building</span></div>
+          <div>Wave: <span id="stat-wave">0</span></div>
+          <div>Enemies: <span id="stat-enemies">0</span></div>
+        </div>
         <div id="toolbar">
+          <div class="toolbar-label">BUILDINGS</div>
           <button data-tool="road">Road ($10)</button>
           <button data-tool="residential">Residential ($50)</button>
           <button data-tool="commercial">Commercial ($75)</button>
           <button data-tool="industrial">Industrial ($100)</button>
           <button data-tool="powerplant">Power Plant ($500)</button>
+          <hr style="border-color: #444; margin: 4px 0" />
+          <div class="toolbar-label">DEFENSE</div>
+          <button data-tool="laser">Laser Turret ($150)</button>
+          <button data-tool="missile">Missile Battery ($300)</button>
+          <button data-tool="plasma">Plasma Cannon ($250)</button>
+          <button data-tool="railgun">Railgun ($400)</button>
+          <button data-tool="ion">Ion Beam ($350)</button>
+          <button data-tool="tesla">Tesla Coil ($200)</button>
+          <button data-tool="gravity">Gravity Well ($300)</button>
+          <button data-tool="emp">EMP Launcher ($350)</button>
+          <button data-tool="shield">Shield Projector ($400)</button>
+          <button data-tool="drone">Drone Hub ($450)</button>
+          <hr style="border-color: #444; margin: 4px 0" />
           <button data-tool="bulldoze" class="danger">Bulldoze</button>
           <hr style="border-color: #444; margin: 4px 0" />
           <button id="btn-save">Save Game</button>
           <button id="btn-load">Load Game</button>
         </div>
         <div id="tile-info"></div>
+        <div id="game-over" style="display: none">
+          <div style="font-size: 14px; color: #ff4444; margin-bottom: 8px">CITY DESTROYED</div>
+          <div id="go-wave">Wave: 0</div>
+          <button id="btn-restart" style="margin-top: 8px">Restart</button>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

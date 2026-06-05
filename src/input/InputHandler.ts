@@ -1,16 +1,29 @@
 import * as Phaser from "phaser";
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, COLORS } from "../config.js";
+import {
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  TILE_SIZE,
+  COLORS,
+  PLANET_CENTER_X,
+  PLANET_CENTER_Y,
+} from "../config.js";
 import type { WorldMap } from "../map/WorldMap.js";
 import type { EconomySystem } from "../systems/EconomySystem.js";
 import type { UIManager } from "../ui/UIManager.js";
 import { canPlace, BUILDING_TYPES, getBuildingRefund } from "../buildings/Buildings.js";
 import type { Tile, ZoneType } from "../entities/Tile.js";
+import { nearestOrbitRing, angleFromCenter } from "../graphics/SpaceGraphics.js";
+import { SATELLITE_TYPES, ORBIT_RINGS } from "../config.js";
+import type { SatelliteType } from "../config.js";
+import { drawRangeCircle } from "../graphics/SatelliteGraphics.js";
+import type { DefenseSystem } from "../systems/DefenseSystem.js";
 
 interface ToolScene {
   worldMap: WorldMap;
   graphics: Phaser.GameObjects.Graphics;
   economy: EconomySystem;
   uiManager?: UIManager;
+  defenseSystem?: DefenseSystem;
   cameras: { main: Phaser.Cameras.Scene2D.Camera };
   input: Phaser.Input.InputPlugin;
   time: { now: number };
@@ -63,26 +76,19 @@ export class InputHandler {
       }
     });
 
-    this.input.on(
-      "wheel",
-      (
-        _pointer: Phaser.Input.Pointer,
-        _gos: Phaser.GameObjects.GameObject[],
-        _dx: number,
-        dy: number,
-      ) => {
-        const cam = this.scene.cameras.main;
-        const pointer = this.scene.input.activePointer;
-        const oldZoom = cam.zoom;
-        const worldX = cam.scrollX + pointer.x / oldZoom;
-        const worldY = cam.scrollY + pointer.y / oldZoom;
-        cam.zoom = Phaser.Math.Clamp(cam.zoom - dy * 0.001, 0.5, 3);
-        cam.scrollX = worldX - pointer.x / cam.zoom;
-        cam.scrollY = worldY - pointer.y / cam.zoom;
-      },
-    );
-
     const canvas = (scene as unknown as { game: Phaser.Game }).game.canvas as HTMLCanvasElement;
+
+    canvas.addEventListener(
+      "wheel",
+      (e: WheelEvent) => {
+        e.preventDefault();
+        const cam = this.scene.cameras.main;
+        const newZoom = Phaser.Math.Clamp(cam.zoom - e.deltaY * 0.001, 0.15, 3);
+        cam.zoom = newZoom;
+        cam.centerOn(PLANET_CENTER_X, PLANET_CENTER_Y);
+      },
+      { passive: false },
+    );
     canvas.addEventListener("mouseenter", () => {
       this.pointerOverCanvas = true;
     });
@@ -102,6 +108,22 @@ export class InputHandler {
         this.scene.uiManager.showTileInfo(tile);
       }
       this.drawPreview(tile);
+
+      // Satellite preview
+      const satType = window.gameState.selectedTool as SatelliteType;
+      if (satType && SATELLITE_TYPES[satType as keyof typeof SATELLITE_TYPES]) {
+        const ring = nearestOrbitRing(worldPoint.x, worldPoint.y);
+        if (ring) {
+          const angle = angleFromCenter(worldPoint.x, worldPoint.y);
+          const satConfig = SATELLITE_TYPES[satType as keyof typeof SATELLITE_TYPES];
+          const ringConfig = ORBIT_RINGS[ring as keyof typeof ORBIT_RINGS];
+          const wx = PLANET_CENTER_X + Math.cos(angle) * ringConfig.radius;
+          const wy = PLANET_CENTER_Y + Math.sin(angle) * ringConfig.radius;
+          this.scene.graphics.fillStyle(0xffffff, 0.3);
+          this.scene.graphics.fillRect(wx - 4, wy - 4, 8, 8);
+          drawRangeCircle(this.scene.graphics, wx, wy, satConfig.range, 0x88ccff);
+        }
+      }
     });
   }
 
@@ -137,8 +159,28 @@ export class InputHandler {
     if (!tile) return;
 
     if (tool === "bulldoze") {
+      // Try bulldozing a satellite first
+      if (
+        this.scene.defenseSystem &&
+        this.scene.defenseSystem.removeSatellite(worldPoint.x, worldPoint.y)
+      ) {
+        this.scene.worldMap.render(this.scene.graphics);
+        return;
+      }
       this.doBulldoze(tile);
     } else {
+      // Check if it's a satellite tool
+      const satType = tool as SatelliteType;
+      if (SATELLITE_TYPES[satType as keyof typeof SATELLITE_TYPES]) {
+        const ring = nearestOrbitRing(worldPoint.x, worldPoint.y);
+        if (ring && this.scene.defenseSystem) {
+          const angle = angleFromCenter(worldPoint.x, worldPoint.y);
+          this.scene.defenseSystem.placeSatellite(satType, angle, ring);
+        }
+        this.scene.worldMap.render(this.scene.graphics);
+        return;
+      }
+
       if (!canPlace(tile, tool, this.scene.worldMap, window.gameState)) return;
       this.doPlace(tile, tool);
     }
