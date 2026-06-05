@@ -5,6 +5,7 @@ import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
 import { Enemy } from "../entities/Enemy.js";
 import {
   drawLaserBeam,
+  drawLaserBeamLine,
   drawMissileProj,
   drawPlasmaBlob,
   drawRailgunTracer,
@@ -61,6 +62,7 @@ export class DefenseSystem {
   satellites: OrbitalSatellite[] = [];
   projectiles: Projectile[] = [];
   drones: Drone[] = [];
+  laserBeamTargets: Map<OrbitalSatellite, Enemy> = new Map();
   private cooldowns: Map<OrbitalSatellite, number> = new Map();
   private _lastSynergyTime = 0;
   private _synergyDirty = true;
@@ -185,6 +187,20 @@ export class DefenseSystem {
       }
     }
 
+    // Track beam targets for continuous turrets (latch-on behavior)
+    for (const sat of this.satellites) {
+      if (sat.config.special !== "continuous") continue;
+      const current = this.laserBeamTargets.get(sat);
+      if (current && current.alive) {
+        const dx = current.worldX - sat.worldX;
+        const dy = current.worldY - sat.worldY;
+        if (Math.sqrt(dx * dx + dy * dy) <= sat.range) continue; // keep latching
+      }
+      const target = this.findClosestEnemy(sat, enemies);
+      if (target) this.laserBeamTargets.set(sat, target);
+      else this.laserBeamTargets.delete(sat);
+    }
+
     // Fire from each satellite
     for (const sat of this.satellites) {
       const config = sat.config;
@@ -192,6 +208,21 @@ export class DefenseSystem {
 
       const lastFire = this.cooldowns.get(sat) || 0;
       if (time - lastFire < sat.fireRate) continue;
+
+      if (config.special === "continuous") {
+        const target = this.laserBeamTargets.get(sat);
+        if (!target || !target.alive) continue;
+        const dx = target.worldX - sat.worldX;
+        const dy = target.worldY - sat.worldY;
+        if (Math.sqrt(dx * dx + dy * dy) > sat.range) continue;
+        const killed = target.takeDamage(sat.damage);
+        if (killed) {
+          this.addExplosion(target.worldX, target.worldY, target.radius * 1.5, 500, 0xff2200);
+          this.laserBeamTargets.delete(sat);
+        }
+        this.cooldowns.set(sat, time);
+        continue;
+      }
 
       if (config.special === "drone") {
         this.spawnDrones(sat, enemies);
@@ -664,25 +695,44 @@ export class DefenseSystem {
     this._synergyDirty = true;
   }
 
-  render(g: Phaser.GameObjects.Graphics): void {
+  render(
+    g: Phaser.GameObjects.Graphics,
+    vx1?: number,
+    vy1?: number,
+    vx2?: number,
+    vy2?: number,
+  ): void {
+    const cull = vx1 !== undefined;
+    const inView = (x: number, y: number) =>
+      !cull || (x >= vx1! && x <= vx2! && y >= vy1! && y <= vy2!);
+
     // Shield barriers
     for (const sat of this.satellites) {
       if (sat.type !== "shield" || !sat.barriers) continue;
       for (let i = 0; i < sat.barriers.length; i++) {
         if (sat.barriers[i] <= 0) continue;
         const pos = OrbitalSatellite.getBarrierWorldPos(sat, i);
+        if (!inView(pos.x, pos.y)) continue;
         drawShieldBarrier(g, pos.x, pos.y, sat.barriers[i], SHIELD_BARRIER.hitCount);
       }
     }
 
     // Drones
     for (const d of this.drones) {
+      if (!inView(d.worldX, d.worldY)) continue;
       drawDroneProj(g, d.worldX, d.worldY);
+    }
+
+    // Laser beams (continuous)
+    for (const [sat, target] of this.laserBeamTargets) {
+      if (!target.alive) continue;
+      drawLaserBeamLine(g, sat.worldX, sat.worldY, target.worldX, target.worldY);
     }
 
     // Projectiles
     for (const p of this.projectiles) {
       if (!p.alive) continue;
+      if (!inView(p.worldX, p.worldY)) continue;
       switch (p.drawType) {
         case "laser":
           drawLaserBeam(g, p.worldX, p.worldY);
@@ -719,6 +769,7 @@ export class DefenseSystem {
 
     // Explosions
     for (const ex of this.explosions) {
+      if (!inView(ex.x, ex.y)) continue;
       const t = Math.max(0, ex.time / 500);
       const alpha = Math.min(1, t * 2);
       const expand = 1 + (1 - t) * 1.5;
@@ -727,6 +778,7 @@ export class DefenseSystem {
 
     // Particles
     for (const pt of this.particles) {
+      if (!inView(pt.x, pt.y)) continue;
       const alpha = Math.max(0, pt.life / pt.maxLife);
       g.fillStyle(pt.color, alpha * 0.8);
       g.fillCircle(Math.round(pt.x), Math.round(pt.y), Math.max(1, Math.round(pt.size * alpha)));

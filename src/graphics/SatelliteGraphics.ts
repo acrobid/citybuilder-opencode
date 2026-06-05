@@ -53,9 +53,9 @@ export function drawSatellite(g: Phaser.GameObjects.Graphics, sat: OrbitalSatell
   }
 }
 
-// Type 1: Laser Turret — cyan diamond
+// Type 1: Laser Turret — red diamond
 function drawLaserSat(g: Phaser.GameObjects.Graphics, cx: number, cy: number): void {
-  g.fillStyle(0x4488ff, 1);
+  g.fillStyle(0x882222, 1);
   g.fillRect(cx - 3, cy - 3, 6, 6);
   g.fillStyle(SPACE_COLORS.LASER_BEAM, 1);
   g.fillRect(cx - 1, cy - 1, 2, 2);
@@ -165,6 +165,27 @@ export function drawLaserBeam(g: Phaser.GameObjects.Graphics, x: number, y: numb
   g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 5, 5);
   g.fillStyle(0xffffff, 0.7);
   g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+}
+
+export function drawLaserBeamLine(
+  g: Phaser.GameObjects.Graphics,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): void {
+  // Outer glow
+  g.lineStyle(10, 0xff2200, 0.08);
+  g.lineBetween(x1, y1, x2, y2);
+  // Mid glow
+  g.lineStyle(6, 0xff3300, 0.25);
+  g.lineBetween(x1, y1, x2, y2);
+  // Core
+  g.lineStyle(3, 0xff4444, 0.75);
+  g.lineBetween(x1, y1, x2, y2);
+  // White-hot center
+  g.lineStyle(1, 0xffaa88, 0.9);
+  g.lineBetween(x1, y1, x2, y2);
 }
 
 export function drawMissileProj(

@@ -43,6 +43,23 @@ export class GameScene extends Phaser.Scene {
   private _fpsFrames = 0;
   private _fpsLastTime = 0;
   private _fps = 0;
+  private _vx1 = 0;
+  private _vx2 = 0;
+  private _vy1 = 0;
+  private _vy2 = 0;
+
+  private _updateViewport(): void {
+    const view = this.cameras.main.worldView;
+    const buffer = 64;
+    this._vx1 = view.x - buffer;
+    this._vy1 = view.y - buffer;
+    this._vx2 = view.x + view.width + buffer;
+    this._vy2 = view.y + view.height + buffer;
+  }
+
+  _isInView(x: number, y: number): boolean {
+    return x >= this._vx1 && x <= this._vx2 && y >= this._vy1 && y <= this._vy2;
+  }
 
   constructor() {
     super("GameScene");
@@ -107,30 +124,7 @@ export class GameScene extends Phaser.Scene {
         this.worldMap.render(this.mapGraphics);
         this.worldMap.dirty = false;
       }
-      this.graphics.clear();
-      for (const sat of this.defenseSystem.satellites) {
-        drawSatellite(this.graphics, sat);
-      }
-      for (const enemy of this.waveSystem.enemies) {
-        if (enemy.alive) drawEnemy(this.graphics, enemy, time);
-      }
-      for (const b of this.waveSystem.enemyBullets) {
-        if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY, b.vx, b.vy);
-      }
-      for (const ex of this.waveSystem.enemyBulletExplosions) {
-        drawEnemyBulletExplosion(
-          this.graphics,
-          ex.x,
-          ex.y,
-          ex.time / 200,
-          ex.color ?? 0xff4444,
-          ex.radius ?? 4,
-        );
-      }
-      for (const crash of this.waveSystem.satelliteCrashes) {
-        drawSatelliteCrash(this.graphics, crash);
-      }
-      this.defenseSystem.render(this.graphics);
+      this._drawEntities(time);
       return;
     }
 
@@ -158,36 +152,51 @@ export class GameScene extends Phaser.Scene {
       this.worldMap.dirty = false;
     }
 
-    this.graphics.clear();
+    this._drawEntities(time);
+  }
+
+  private _drawEntities(time: number): void {
+    this._updateViewport();
+    const gfx = this.graphics;
+    gfx.clear();
 
     for (const sat of this.defenseSystem.satellites) {
-      drawSatellite(this.graphics, sat);
+      if (this._isInView(sat.worldX, sat.worldY)) {
+        drawSatellite(gfx, sat);
+      }
     }
 
     for (const enemy of this.waveSystem.enemies) {
-      if (enemy.alive) drawEnemy(this.graphics, enemy, time);
+      if (enemy.alive && this._isInView(enemy.worldX, enemy.worldY)) {
+        drawEnemy(gfx, enemy, time);
+      }
     }
 
-    // Enemy bullets
     for (const b of this.waveSystem.enemyBullets) {
-      if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY, b.vx, b.vy);
+      if (b.alive && this._isInView(b.worldX, b.worldY)) {
+        drawEnemyBullet(gfx, b.worldX, b.worldY, b.vx, b.vy);
+      }
     }
 
     for (const ex of this.waveSystem.enemyBulletExplosions) {
-      drawEnemyBulletExplosion(
-        this.graphics,
-        ex.x,
-        ex.y,
-        ex.time / 200,
-        ex.color ?? 0xff4444,
-        ex.radius ?? 4,
-      );
+      if (this._isInView(ex.x, ex.y)) {
+        drawEnemyBulletExplosion(
+          gfx,
+          ex.x,
+          ex.y,
+          ex.time / 200,
+          ex.color ?? 0xff4444,
+          ex.radius ?? 4,
+        );
+      }
     }
 
     for (const crash of this.waveSystem.satelliteCrashes) {
-      drawSatelliteCrash(this.graphics, crash);
+      if (this._isInView(crash.worldX, crash.worldY)) {
+        drawSatelliteCrash(gfx, crash);
+      }
     }
 
-    this.defenseSystem.render(this.graphics);
+    this.defenseSystem.render(gfx, this._vx1, this._vy1, this._vx2, this._vy2);
   }
 }
