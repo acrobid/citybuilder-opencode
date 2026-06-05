@@ -3,6 +3,10 @@ import { SPACE_COLORS, PLANET_CENTER_X, PLANET_CENTER_Y } from "../config.js";
 import { Enemy } from "../entities/Enemy.js";
 import { fillCircle } from "./SpaceGraphics.js";
 
+const _asteroidVerts = Array.from({ length: 10 }, () => new PhaserMath.Vector2());
+const _asteroidShadow = Array.from({ length: 10 }, () => new PhaserMath.Vector2());
+const _hullVerts = Array.from({ length: 8 }, () => new PhaserMath.Vector2());
+
 function drawHealthBar(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   const bw = enemy.radius * 2 + 4;
   const bh = 3;
@@ -31,35 +35,29 @@ function drawAsteroid(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   const cy = Math.round(enemy.worldY);
   const r = enemy.radius;
 
-  // Stable seed based on coarse position so the shape doesn't flicker
   const seed = (Math.floor(cx / 6) * 73856093 + Math.floor(cy / 6) * 19349663) | 0;
   const numVerts = 10;
-  const verts: PhaserMath.Vector2[] = [];
 
   for (let i = 0; i < numVerts; i++) {
     const angle = (i / numVerts) * Math.PI * 2;
     const jitter = 0.65 + prng(seed + i * 7 + 1) * 0.35;
     const vr = r * jitter;
-    verts.push(new PhaserMath.Vector2(cx + Math.cos(angle) * vr, cy + Math.sin(angle) * vr));
+    _asteroidVerts[i].x = cx + Math.cos(angle) * vr;
+    _asteroidVerts[i].y = cy + Math.sin(angle) * vr;
+    _asteroidShadow[i].x = _asteroidVerts[i].x - 1;
+    _asteroidShadow[i].y = _asteroidVerts[i].y - 1;
   }
 
-  // Shadow
   g.fillStyle(0x332211, 0.5);
-  g.fillPoints(verts, true);
+  g.fillPoints(_asteroidVerts, true);
 
-  // Body
   const bodyColor = seed & 1 ? 0x997755 : seed & 2 ? 0x886644 : 0x775533;
   g.fillStyle(bodyColor, 1);
-  g.fillPoints(
-    verts.map((v) => new PhaserMath.Vector2(v.x - 1, v.y - 1)),
-    true,
-  );
+  g.fillPoints(_asteroidShadow, true);
 
-  // Outline
   g.lineStyle(1, 0x443322, 0.7);
-  g.strokePoints(verts, true);
+  g.strokePoints(_asteroidVerts, true);
 
-  // Craters — small dark circles at deterministic positions
   for (let i = 0; i < 4; i++) {
     const angle = prng(seed + i * 13 + 5) * Math.PI * 2;
     const dist = prng(seed + i * 17 + 9) * (r - 6) + 2;
@@ -67,7 +65,6 @@ function drawAsteroid(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
     const crx = cx + Math.cos(angle) * dist;
     const cry = cy + Math.sin(angle) * dist;
     fillCircle(g, Math.round(crx), Math.round(cry), Math.round(cr), 0x332211, 0.6);
-    // Rim highlight
     fillCircle(
       g,
       Math.round(crx + cr * 0.4),
@@ -78,7 +75,6 @@ function drawAsteroid(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
     );
   }
 
-  // Highlight — lighter patch on upper-left (light from top-left)
   fillCircle(
     g,
     Math.round(cx - r * 0.25),
@@ -137,22 +133,17 @@ function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: numb
   const t = time;
 
   // Outer hull — hexagonal/saucer shape
-  const hullVerts: PhaserMath.Vector2[] = [];
   const hullSegments = 8;
   for (let i = 0; i < hullSegments; i++) {
     const angle = (i / hullSegments) * Math.PI * 2;
     const squeeze = i % 2 === 0 ? 1 : 0.82;
-    hullVerts.push(
-      new PhaserMath.Vector2(
-        cx + Math.cos(angle) * r * squeeze,
-        cy + Math.sin(angle) * r * squeeze,
-      ),
-    );
+    _hullVerts[i].x = cx + Math.cos(angle) * r * squeeze;
+    _hullVerts[i].y = cy + Math.sin(angle) * r * squeeze;
   }
   g.fillStyle(0x661133, 1);
-  g.fillPoints(hullVerts, true);
+  g.fillPoints(_hullVerts, true);
   g.lineStyle(1, 0xaa2255, 0.6);
-  g.strokePoints(hullVerts, true);
+  g.strokePoints(_hullVerts, true);
 
   // Mid ring
   fillCircle(g, cx, cy, r - 6, 0x881144, 0.9);
