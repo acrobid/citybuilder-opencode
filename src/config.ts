@@ -112,8 +112,12 @@ export const SATELLITE_TYPES = {
     damage: 0,
     range: 350,
     cost: 300,
-    projectileSpeed: 0,
-    special: "slow",
+    projectileSpeed: 300,
+    special: "blackhole",
+    blackholeDuration: 4000,
+    blackholeCooldown: 30000,
+    blackholePullRadius: 200,
+    blackholePullStrength: 100,
   },
   emp: {
     name: "EMP Launcher",
@@ -153,7 +157,7 @@ export const SYNERGY = {
 export const ENEMY_TYPES = {
   asteroid: { speed: 30, health: 80, damage: 1, radius: 24, score: 10, spawnDelay: 200 },
   scout: { speed: 60, health: 40, damage: 1, radius: 20, score: 20, spawnDelay: 100 },
-  mothership: { speed: 15, health: 500, damage: 3, radius: 48, score: 100, spawnDelay: 2000 },
+  mothership: { speed: 15, health: 800, damage: 4, radius: 64, score: 150, spawnDelay: 2000 },
 } as const;
 export type EnemyTypeName = keyof typeof ENEMY_TYPES;
 
@@ -168,16 +172,28 @@ export const SHIELD_BARRIER = {
 } as const;
 
 export const WAVE_CONFIG = {
-  initialDelay: 3000, // 3s grace period before wave 1
-  buildPhaseDuration: 30000, // 30s between waves (decreases by 500ms per wave)
-  minInterval: 20000, // minimum time between waves
-  baseEnemies: 30, // asteroids in wave 1
-  enemiesPerWave: 20, // extra asteroids per wave level
-  scoutsStartWave: 2, // scouts first appear in wave 2
-  scoutsPerWave: 20, // extra scouts per wave level
-  mothershipEvery: 5, // mothership every Nth wave
-  waveReward: 2000, // base money reward
-  waveRewardPerWave: 500, // extra money per wave level
+  initialDelay: 3000,
+  buildPhaseDuration: 30000,
+  minInterval: 20000,
+  baseEnemies: 30,
+  enemiesPerWave: 20,
+  scoutsStartWave: 2,
+  scoutsPerWave: 20,
+  mothershipEvery: 1,
+  waveReward: 2000,
+  waveRewardPerWave: 500,
+} as const;
+
+export const MOTHERSHIP_BURST = {
+  cooldown: 2000,
+  minCount: 3,
+  maxCount: 5,
+  spawnRadius: 50,
+  burstDuration: 600,
+  ringMaxRadius: 100,
+  ejectionSpeedMin: 300,
+  ejectionSpeedMax: 600,
+  ejectionDuration: 900,
 } as const;
 
 // ── Ion Beam Config ──

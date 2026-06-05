@@ -20,6 +20,9 @@ export class Enemy {
   shootTimer = 0; // cooldown until next shot
   knockbackVx = 0;
   knockbackVy = 0;
+  ejectionVx = 0;
+  ejectionVy = 0;
+  ejectionTimer = 0;
 
   constructor(
     type: EnemyTypeName,
@@ -47,7 +50,7 @@ export class Enemy {
     // Handle stun
     if (this.stunTimer > 0) {
       this.stunTimer -= delta;
-      return false; // don't move while stunned
+      return false;
     }
 
     // Apply knockback
@@ -60,6 +63,23 @@ export class Enemy {
         this.knockbackVx = 0;
         this.knockbackVy = 0;
       }
+    }
+
+    // Mothership burst ejection (with corkscrew spiral)
+    if (this.ejectionTimer > 0) {
+      this.ejectionTimer -= delta;
+      const speed = Math.sqrt(
+        this.ejectionVx * this.ejectionVx + this.ejectionVy * this.ejectionVy,
+      );
+      const wobbleAmp = Math.min(120, speed * 0.3);
+      const wobble = Math.sin(this.ejectionTimer * 0.015) * wobbleAmp;
+      const perpX = -this.ejectionVy;
+      const perpY = this.ejectionVx;
+      const perpLen = Math.sqrt(perpX * perpX + perpY * perpY) || 1;
+      this.worldX += (this.ejectionVx + (perpX / perpLen) * wobble) * (delta / 1000);
+      this.worldY += (this.ejectionVy + (perpY / perpLen) * wobble) * (delta / 1000);
+      this.ejectionVx *= 0.93;
+      this.ejectionVy *= 0.93;
     }
 
     const dx = PLANET_CENTER_X - this.worldX;

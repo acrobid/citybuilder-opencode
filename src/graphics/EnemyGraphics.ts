@@ -1,5 +1,11 @@
 import Phaser, { Math as PhaserMath } from "phaser";
-import { SPACE_COLORS, PLANET_CENTER_X, PLANET_CENTER_Y, PLANET_RADIUS } from "../config.js";
+import {
+  SPACE_COLORS,
+  MOTHERSHIP_BURST,
+  PLANET_CENTER_X,
+  PLANET_CENTER_Y,
+  PLANET_RADIUS,
+} from "../config.js";
 import { Enemy } from "../entities/Enemy.js";
 import { fillCircle } from "./SpaceGraphics.js";
 
@@ -91,8 +97,61 @@ function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   const cx = Math.round(enemy.worldX);
   const cy = Math.round(enemy.worldY);
 
+  // ── Ejection energy trail (mothership burst) ──
+  if (enemy.ejectionTimer > 0) {
+    const intensity = enemy.ejectionTimer / MOTHERSHIP_BURST.ejectionDuration;
+    const eVx = enemy.ejectionVx;
+    const eVy = enemy.ejectionVy;
+    const eSpeed = Math.sqrt(eVx * eVx + eVy * eVy) || 1;
+    const tDirX = -eVx / eSpeed;
+    const tDirY = -eVy / eSpeed;
+    const trailLen = 80 + intensity * 100;
+
+    // Energy streak (bright accelerating ribbon)
+    const streakEnd = Math.round(trailLen);
+    const streakAlpha = intensity * 0.6;
+    g.lineStyle(3, 0x66ddff, streakAlpha * 0.4);
+    g.lineBetween(cx, cy, cx + Math.round(tDirX * streakEnd), cy + Math.round(tDirY * streakEnd));
+    g.lineStyle(2, 0xaaeeff, streakAlpha * 0.6);
+    g.lineBetween(
+      cx,
+      cy,
+      cx + Math.round(tDirX * streakEnd * 0.6),
+      cy + Math.round(tDirY * streakEnd * 0.6),
+    );
+    g.lineStyle(1, 0xffffff, streakAlpha * 0.8);
+    g.lineBetween(
+      cx,
+      cy,
+      cx + Math.round(tDirX * streakEnd * 0.3),
+      cy + Math.round(tDirY * streakEnd * 0.3),
+    );
+
+    // Energy sparks
+    for (let i = 0; i < 6; i++) {
+      const t = (i + 1) / 6;
+      const dist = t * trailLen;
+      const px = cx + tDirX * dist + ((i * 37) % 15) - 7;
+      const py = cy + tDirY * dist + ((i * 23) % 11) - 5;
+      const alpha = intensity * (1 - t) * 0.8;
+      if (alpha <= 0) continue;
+      g.fillStyle(0x88ddff, alpha);
+      g.fillRect(Math.round(px) - 1, Math.round(py) - 1, 3, 3);
+      g.fillStyle(0xffffff, alpha * 0.5);
+      g.fillRect(Math.round(px), Math.round(py), 1, 1);
+    }
+  }
+
+  // Ejection energy glow around ship body
+  if (enemy.ejectionTimer > 0) {
+    const intensity = enemy.ejectionTimer / MOTHERSHIP_BURST.ejectionDuration;
+    const glowR = 14 + intensity * 10;
+    const glowA = intensity * 0.25;
+    fillCircle(g, cx, cy, Math.round(glowR), 0x66ddff, glowA);
+    fillCircle(g, cx, cy, Math.round(glowR * 0.6), 0xaaefff, glowA * 0.5);
+  }
+
   // Angular arrow-shaped ship pointing right (toward center-ish)
-  // Nose
   g.fillStyle(0x226633, 1);
   g.fillTriangle(cx + 10, cy, cx, cy - 7, cx + 2, cy);
   g.fillTriangle(cx + 10, cy, cx, cy + 7, cx + 2, cy);
@@ -108,7 +167,6 @@ function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   // Wing top
   g.fillStyle(0x228833, 1);
   g.fillTriangle(cx - 4, cy - 4, cx - 1, cy - 4, cx - 6, cy - 10);
-  // Wing bottom
   g.fillTriangle(cx - 4, cy + 4, cx - 1, cy + 4, cx - 6, cy + 10);
 
   // Engine glow
@@ -117,7 +175,6 @@ function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   g.fillStyle(0xaaffcc, 0.8);
   g.fillRect(cx - 6, cy - 1, 2, 2);
 
-  // Wing edge highlights
   g.fillStyle(0x55ff88, 0.4);
   g.fillRect(cx - 6, cy - 10, 2, 2);
   g.fillRect(cx - 6, cy + 8, 2, 2);
@@ -374,4 +431,54 @@ export function drawSatelliteCrash(
   g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), Math.round(coreSize * 0.5));
   g.fillStyle(0xffffff, coreAlpha * 0.7);
   g.fillCircle(Math.round(crash.worldX), Math.round(crash.worldY), 2);
+}
+
+export function drawMothershipSpawnBurst(
+  g: Phaser.GameObjects.Graphics,
+  effect: {
+    x: number;
+    y: number;
+    elapsed: number;
+    duration: number;
+  },
+): void {
+  const progress = effect.elapsed / effect.duration;
+  if (progress >= 1) return;
+  const alpha = 1 - progress;
+
+  // Expanding shockwave rings
+  const ringR = 10 + progress * MOTHERSHIP_BURST.ringMaxRadius;
+  const ringA = alpha * 0.18;
+  fillCircle(g, Math.round(effect.x), Math.round(effect.y), Math.round(ringR), 0x88ddff, ringA);
+  fillCircle(
+    g,
+    Math.round(effect.x),
+    Math.round(effect.y),
+    Math.round(ringR * 0.65),
+    0xaaefff,
+    ringA * 0.6,
+  );
+  fillCircle(
+    g,
+    Math.round(effect.x),
+    Math.round(effect.y),
+    Math.round(ringR * 0.3),
+    0xffffff,
+    ringA * 0.3,
+  );
+
+  // Central flash
+  const flashR = 8 + (1 - progress) * 50;
+  const flashA = alpha * (progress < 0.2 ? 0.7 : 0.7 * (1 - (progress - 0.2) / 0.8));
+  if (flashA > 0) {
+    fillCircle(g, Math.round(effect.x), Math.round(effect.y), Math.round(flashR), 0xffffff, flashA);
+    fillCircle(
+      g,
+      Math.round(effect.x),
+      Math.round(effect.y),
+      Math.round(flashR * 0.5),
+      0xccddff,
+      flashA * 0.5,
+    );
+  }
 }

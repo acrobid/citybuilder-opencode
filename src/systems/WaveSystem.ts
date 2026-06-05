@@ -2,6 +2,7 @@ import { Enemy, EnemyTypeName } from "../entities/Enemy.js";
 import {
   ENEMY_TYPES,
   WAVE_CONFIG,
+  MOTHERSHIP_BURST,
   SHIELD_BARRIER,
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
@@ -43,6 +44,13 @@ interface EnemyBullet {
   alive: boolean;
 }
 
+interface SpawnBurstEffect {
+  x: number;
+  y: number;
+  elapsed: number;
+  duration: number;
+}
+
 interface SatelliteCrash {
   worldX: number;
   worldY: number;
@@ -59,6 +67,7 @@ export class WaveSystem {
   enemyBulletExplosions: { x: number; y: number; time: number; color?: number; radius?: number }[] =
     [];
   satelliteCrashes: SatelliteCrash[] = [];
+  spawnBurstEffects: SpawnBurstEffect[] = [];
   private waveNumber = 0;
   private waveActive = false;
   private inBuildPhase = true;
@@ -91,6 +100,7 @@ export class WaveSystem {
       this.updateEnemies(delta, worldMap, satellites);
       this.updateEnemyBullets(delta, satellites);
       this.updateSatelliteCrashes(delta, worldMap);
+      this.updateBurstEffects(delta);
       window.gameState.enemiesRemaining =
         this.enemies.length + (this.spawnQueue.length - this.spawnIndex);
       return;
@@ -112,6 +122,7 @@ export class WaveSystem {
     this.updateEnemies(delta, worldMap, satellites);
     this.updateEnemyBullets(delta, satellites);
     this.updateSatelliteCrashes(delta, worldMap);
+    this.updateBurstEffects(delta);
 
     // Check wave complete
     if (this.spawnIndex >= this.spawnQueue.length && this.enemies.length === 0 && this.waveActive) {
@@ -149,26 +160,36 @@ export class WaveSystem {
         this.spawnScoutsFrom(enemy.worldX, enemy.worldY, 3);
       }
 
-      // Aliens shoot at satellites
-      if (enemy.type !== "asteroid" && satellites.length > 0) {
+      // Mothership pukes out ships in bursts
+      if (enemy.type === "mothership") {
         enemy.shootTimer -= delta;
         if (enemy.shootTimer <= 0) {
-          const cooldown = enemy.type === "mothership" ? 800 : 2000;
-          enemy.shootTimer = cooldown;
+          enemy.shootTimer = MOTHERSHIP_BURST.cooldown;
+          const count =
+            MOTHERSHIP_BURST.minCount +
+            Math.floor(Math.random() * (MOTHERSHIP_BURST.maxCount - MOTHERSHIP_BURST.minCount + 1));
+          this.spawnBurstFrom(enemy.worldX, enemy.worldY, count);
+          this.spawnBurstEffects.push(this._makeBurstEffect(enemy.worldX, enemy.worldY));
+        }
+      }
+
+      // Scouts shoot bullets at satellites
+      if (enemy.type === "scout" && satellites.length > 0) {
+        enemy.shootTimer -= delta;
+        if (enemy.shootTimer <= 0) {
+          enemy.shootTimer = 2000;
           const sat = this.findBestSatelliteTarget(enemy, satellites);
           if (sat) {
             const dx = sat.worldX - enemy.worldX;
             const dy = sat.worldY - enemy.worldY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist > 0) {
-              const speed = 200;
-              const damage = enemy.type === "mothership" ? 2 : 1;
               this.enemyBullets.push({
                 worldX: enemy.worldX,
                 worldY: enemy.worldY,
-                vx: (dx / dist) * speed,
-                vy: (dy / dist) * speed,
-                damage,
+                vx: (dx / dist) * 200,
+                vy: (dy / dist) * 200,
+                damage: 1,
                 alive: true,
               });
             }
@@ -358,6 +379,35 @@ export class WaveSystem {
     }
   }
 
+  private spawnBurstFrom(x: number, y: number, count: number): void {
+    const cfg = ENEMY_TYPES.scout;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 10 + Math.random() * MOTHERSHIP_BURST.spawnRadius;
+      const e = new Enemy(
+        "scout",
+        x + Math.cos(a) * r,
+        y + Math.sin(a) * r,
+        cfg.health,
+        cfg.speed,
+        cfg.damage,
+        cfg.radius,
+        cfg.score,
+      );
+      const ejectSpeed =
+        MOTHERSHIP_BURST.ejectionSpeedMin +
+        Math.random() * (MOTHERSHIP_BURST.ejectionSpeedMax - MOTHERSHIP_BURST.ejectionSpeedMin);
+      e.ejectionVx = Math.cos(a) * ejectSpeed;
+      e.ejectionVy = Math.sin(a) * ejectSpeed;
+      e.ejectionTimer = MOTHERSHIP_BURST.ejectionDuration;
+      this.enemies.push(e);
+    }
+  }
+
+  private _makeBurstEffect(x: number, y: number): SpawnBurstEffect {
+    return { x, y, elapsed: 0, duration: MOTHERSHIP_BURST.burstDuration };
+  }
+
   private doImpact(enemy: Enemy, worldMap: WorldMap): void {
     // Find tile at impact position
     const tile = worldMap.tileAt(enemy.worldX, enemy.worldY);
@@ -439,6 +489,16 @@ export class WaveSystem {
     worldMap.recalculateConnectivity();
   }
 
+  private updateBurstEffects(delta: number): void {
+    for (let i = this.spawnBurstEffects.length - 1; i >= 0; i--) {
+      this.spawnBurstEffects[i].elapsed += delta;
+      if (this.spawnBurstEffects[i].elapsed >= this.spawnBurstEffects[i].duration) {
+        this.spawnBurstEffects[i] = this.spawnBurstEffects[this.spawnBurstEffects.length - 1];
+        this.spawnBurstEffects.pop();
+      }
+    }
+  }
+
   private startNextWave(time: number): void {
     this.waveNumber++;
     this.waveActive = true;
@@ -489,6 +549,7 @@ export class WaveSystem {
     this.enemyBullets = [];
     this.enemyBulletExplosions = [];
     this.satelliteCrashes = [];
+    this.spawnBurstEffects = [];
     this.spawnQueue = [];
     this.spawnIndex = 0;
 
@@ -562,6 +623,7 @@ export class WaveSystem {
     this.enemyBullets = [];
     this.enemyBulletExplosions = [];
     this.satelliteCrashes = [];
+    this.spawnBurstEffects = [];
     window.gameState.wave = waveNumber;
     window.gameState.waveActive = false;
     window.gameState.enemiesRemaining = 0;

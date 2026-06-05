@@ -23,6 +23,7 @@ import {
   drawEnemyBullet,
   drawEnemyBulletExplosion,
   drawSatelliteCrash,
+  drawMothershipSpawnBurst,
 } from "../graphics/EnemyGraphics.js";
 import { drawSatellite } from "../graphics/SatelliteGraphics.js";
 
@@ -134,7 +135,7 @@ export class GameScene extends Phaser.Scene {
     this.zoneSystem.update(time, this.worldMap);
     this.populationSystem.update(time, this.worldMap);
     this.waveSystem.update(time, delta, this.worldMap, this.defenseSystem.satellites);
-    this.defenseSystem.update(time, delta, this.waveSystem.enemies);
+    this.defenseSystem.update(time, delta, this.waveSystem.enemies, this.waveSystem.enemyBullets);
     this.uiManager.update(this._fps);
 
     if (
@@ -188,6 +189,12 @@ export class GameScene extends Phaser.Scene {
           ex.color ?? 0xff4444,
           ex.radius ?? 4,
         );
+      }
+    }
+
+    for (const burst of this.waveSystem.spawnBurstEffects) {
+      if (this._isInView(burst.x, burst.y)) {
+        drawMothershipSpawnBurst(gfx, burst);
       }
     }
 
