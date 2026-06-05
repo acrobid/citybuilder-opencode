@@ -25,6 +25,16 @@ export class UIManager {
   fpsEl: HTMLElement | null;
   gameOverEl: HTMLElement | null;
   goWaveEl: HTMLElement | null;
+  private _prevMoney = -1;
+  private _prevPop = -1;
+  private _prevIncome = -1;
+  private _prevExpenses = -1;
+  private _prevDateMonth = -1;
+  private _prevDateYear = -1;
+  private _prevPhase = "";
+  private _prevWave = -1;
+  private _prevEnemies = -1;
+  private _prevFps = -1;
 
   constructor(scene: UIScene) {
     this.scene = scene;
@@ -121,20 +131,46 @@ export class UIManager {
 
   update(fps: number): void {
     const gs = window.gameState;
-    if (this.moneyEl) this.moneyEl.textContent = String(gs.money);
-    if (this.popEl) this.popEl.textContent = String(gs.population);
-    if (this.incomeEl) this.incomeEl.textContent = String(gs.income);
-    if (this.expensesEl) this.expensesEl.textContent = String(gs.expenses);
+    if (this.moneyEl && gs.money !== this._prevMoney) {
+      this._prevMoney = gs.money;
+      this.moneyEl.textContent = String(gs.money);
+    }
+    if (this.popEl && gs.population !== this._prevPop) {
+      this._prevPop = gs.population;
+      this.popEl.textContent = String(gs.population);
+    }
+    if (this.incomeEl && gs.income !== this._prevIncome) {
+      this._prevIncome = gs.income;
+      this.incomeEl.textContent = String(gs.income);
+    }
+    if (this.expensesEl && gs.expenses !== this._prevExpenses) {
+      this._prevExpenses = gs.expenses;
+      this.expensesEl.textContent = String(gs.expenses);
+    }
     if (this.dateEl) {
       const month = (gs.date % 12) + 1;
       const year = Math.floor(gs.date / 12) + 1;
-      this.dateEl.textContent = `Month ${month}, Year ${year}`;
+      if (month !== this._prevDateMonth || year !== this._prevDateYear) {
+        this._prevDateMonth = month;
+        this._prevDateYear = year;
+        this.dateEl.textContent = `Month ${month}, Year ${year}`;
+      }
     }
     const phase = gs.waveActive ? "Defending" : "Building";
-    if (this.phaseEl) this.phaseEl.textContent = phase;
-    if (this.waveEl) this.waveEl.textContent = String(gs.wave);
-    if (this.enemiesEl) this.enemiesEl.textContent = String(gs.enemiesRemaining);
-    if (this.fpsEl) {
+    if (this.phaseEl && phase !== this._prevPhase) {
+      this._prevPhase = phase;
+      this.phaseEl.textContent = phase;
+    }
+    if (this.waveEl && gs.wave !== this._prevWave) {
+      this._prevWave = gs.wave;
+      this.waveEl.textContent = String(gs.wave);
+    }
+    if (this.enemiesEl && gs.enemiesRemaining !== this._prevEnemies) {
+      this._prevEnemies = gs.enemiesRemaining;
+      this.enemiesEl.textContent = String(gs.enemiesRemaining);
+    }
+    if (this.fpsEl && fps !== this._prevFps) {
+      this._prevFps = fps;
       this.fpsEl.textContent = String(fps);
       this.fpsEl.style.color = fps >= 50 ? "#66cc66" : fps >= 30 ? "#cccc66" : "#cc6666";
     }
