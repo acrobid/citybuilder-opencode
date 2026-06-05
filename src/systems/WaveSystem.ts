@@ -6,6 +6,7 @@ import {
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
   PLANET_RADIUS,
+  ORBIT_RINGS,
 } from "../config.js";
 import type { WorldMap } from "../map/WorldMap.js";
 import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
@@ -47,6 +48,7 @@ interface SatelliteCrash {
   worldY: number;
   angle: number;
   startDist: number;
+  orbitSpeed: number;
   elapsed: number;
   duration: number;
 }
@@ -246,6 +248,7 @@ export class WaveSystem {
               worldY: sat.worldY,
               angle: Math.atan2(cdy, cdx),
               startDist: cdist,
+              orbitSpeed: ORBIT_RINGS[sat.ring].speed,
               elapsed: 0,
               duration: 1800,
             });
@@ -390,12 +393,11 @@ export class WaveSystem {
       const crash = this.satelliteCrashes[i];
       crash.elapsed += delta;
       const t = Math.min(crash.elapsed / crash.duration, 1);
-      crash.worldX =
-        PLANET_CENTER_X +
-        Math.cos(crash.angle) * (crash.startDist + (PLANET_RADIUS - crash.startDist) * t);
-      crash.worldY =
-        PLANET_CENTER_Y +
-        Math.sin(crash.angle) * (crash.startDist + (PLANET_RADIUS - crash.startDist) * t);
+      const radius = crash.startDist + (PLANET_RADIUS - crash.startDist) * t;
+      const angOffset = t * crash.orbitSpeed * (crash.duration / 1000);
+      const currentAngle = crash.angle + angOffset;
+      crash.worldX = PLANET_CENTER_X + Math.cos(currentAngle) * radius;
+      crash.worldY = PLANET_CENTER_Y + Math.sin(currentAngle) * radius;
 
       if (t >= 1) {
         this.enemyBulletExplosions.push({
