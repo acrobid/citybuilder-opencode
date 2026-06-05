@@ -23,6 +23,7 @@ export class WorldMap {
   height: number;
   tiles: Tile[][];
   dirty = true;
+  planetTiles: { x: number; y: number }[];
 
   markDirty(): void {
     this.dirty = true;
@@ -35,10 +36,14 @@ export class WorldMap {
     this.height = MAP_ROWS * TILE_SIZE;
 
     this.tiles = [];
+    this.planetTiles = [];
     for (let y = 0; y < MAP_ROWS; y++) {
       this.tiles[y] = [];
       for (let x = 0; x < MAP_COLS; x++) {
         this.tiles[y][x] = new Tile(x, y);
+        if (isTileOnPlanet(x, y)) {
+          this.planetTiles.push({ x, y });
+        }
       }
     }
   }
@@ -123,55 +128,50 @@ export class WorldMap {
     // Draw orbit rings
     drawOrbitRings(graphics);
 
-    for (let y = 0; y < this.rows; y++) {
-      for (let x = 0; x < this.cols; x++) {
-        const tile = this.tiles[y][x];
-        const px = x * TILE_SIZE;
-        const py = y * TILE_SIZE;
+    for (const { x, y } of this.planetTiles) {
+      const tile = this.tiles[y][x];
+      const px = x * TILE_SIZE;
+      const py = y * TILE_SIZE;
 
-        // Skip tiles outside the planet circle (they're already space)
-        if (!this.isOnPlanetSurface(x, y)) continue;
-
-        switch (tile.zone) {
-          case "road":
-            drawRoadTile(graphics, x, y, px, py, this.tiles);
-            break;
-          case "residential":
-            drawResidentialTile(graphics, x, y, px, py, tile.level);
-            break;
-          case "commercial":
-            drawCommercialTile(graphics, x, y, px, py, tile.level);
-            break;
-          case "industrial":
-            drawIndustrialTile(graphics, x, y, px, py, tile.level);
-            break;
-          case "powerplant":
-            drawPowerPlantTile(graphics, x, y, px, py, this.tiles);
-            break;
-          default:
-            drawEmptyTile(graphics, x, y, px, py);
-            break;
-        }
-
-        // Power overlay (keep existing logic)
-        if (tile.zone !== "empty" && tile.zone !== "road" && !tile.isPowered) {
-          graphics.fillStyle(0x000000, 0.35);
-          graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-        }
-
-        if (
-          tile.isPowered &&
-          (tile.zone === "residential" || tile.zone === "commercial" || tile.zone === "industrial")
-        ) {
-          graphics.fillStyle(0xffdd00, 0.08);
-          graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-        }
-
-        // Grid lines
-        graphics.fillStyle(COLORS.GRID_LINE, 0.1);
-        graphics.fillRect(px, py, TILE_SIZE, 1);
-        graphics.fillRect(px, py, 1, TILE_SIZE);
+      switch (tile.zone) {
+        case "road":
+          drawRoadTile(graphics, x, y, px, py, this.tiles);
+          break;
+        case "residential":
+          drawResidentialTile(graphics, x, y, px, py, tile.level);
+          break;
+        case "commercial":
+          drawCommercialTile(graphics, x, y, px, py, tile.level);
+          break;
+        case "industrial":
+          drawIndustrialTile(graphics, x, y, px, py, tile.level);
+          break;
+        case "powerplant":
+          drawPowerPlantTile(graphics, x, y, px, py, this.tiles);
+          break;
+        default:
+          drawEmptyTile(graphics, x, y, px, py);
+          break;
       }
+
+      // Power overlay
+      if (tile.zone !== "empty" && tile.zone !== "road" && !tile.isPowered) {
+        graphics.fillStyle(0x000000, 0.35);
+        graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      }
+
+      if (
+        tile.isPowered &&
+        (tile.zone === "residential" || tile.zone === "commercial" || tile.zone === "industrial")
+      ) {
+        graphics.fillStyle(0xffdd00, 0.08);
+        graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+      }
+
+      // Grid lines
+      graphics.fillStyle(COLORS.GRID_LINE, 0.1);
+      graphics.fillRect(px, py, TILE_SIZE, 1);
+      graphics.fillRect(px, py, 1, TILE_SIZE);
     }
   }
 
