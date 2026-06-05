@@ -1,0 +1,33 @@
+{
+  "name": "template-vite-ts",
+  "version": "1.4.0",
+  "description": "A Phaser 3 TypeScript template using Vite.",
+  "homepage": "https://github.com/phaserjs/template-vite-ts#readme",
+  "bugs": {
+    "url": "https://github.com/phaserjs/template-vite-ts/issues"
+  },
+  "license": "MIT",
+  "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phaserjs/template-vite-ts.git"
+  },
+  "scripts": {
+    "dev": "node log.js dev & vp dev --config vite/config.dev.mjs",
+    "build": "node log.js build & vp build --config vite/config.prod.mjs",
+    "dev-nolog": "vp dev --config vite/config.dev.mjs",
+    "build-nolog": "vp build --config vite/config.prod.mjs",
+    "prepare": "vp config"
+  },
+  "dependencies": {
+    "phaser": "4.0.0",
+    "terser": "^5.39.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "packageManager": "pnpm@11.5.1",
+  "licenseUrl": "http://www.opensource.org/licenses/mit-license.php"
+}
