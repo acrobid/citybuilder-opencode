@@ -1,0 +1,77 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  background: #0f0f1a;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#game-container {
+  flex: 1;
+}
+
+#sidebar {
+  width: 220px;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 12px;
+  font-family: monospace;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#stats {
+  line-height: 1.6;
+}
+
+#toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#toolbar button {
+  padding: 8px 10px;
+  border: 1px solid #444;
+  background: #2a2a3e;
+  color: #ddd;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 12px;
+  border-radius: 4px;
+  text-align: left;
+}
+
+#toolbar button:hover {
+  background: #3a3a5e;
+}
+
+#toolbar button.active {
+  background: #4455aa;
+  border-color: #6677cc;
+  color: #fff;
+}
+
+#toolbar button.danger {
+  border-color: #882222;
+}
+
+#toolbar button.danger.active {
+  background: #aa3333;
+}
+
+#tile-info {
+  font-size: 11px;
+  color: #999;
+  min-height: 40px;
+}

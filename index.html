@@ -2,15 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/style.css" />
-    <title>Phaser - Template</title>
+    <title>City Builder</title>
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
-
   <body>
     <div id="app">
       <div id="game-container"></div>
+      <div id="sidebar">
+        <div id="stats">
+          <div>Money: $<span id="stat-money">0</span></div>
+          <div>Population: <span id="stat-pop">0</span></div>
+          <div>Income: $<span id="stat-income">0</span>/mo</div>
+          <div>Expenses: $<span id="stat-expenses">0</span>/mo</div>
+          <div>Date: <span id="stat-date">Month 1, Year 1</span></div>
+        </div>
+        <div id="toolbar">
+          <button data-tool="road">Road ($10)</button>
+          <button data-tool="residential">Residential ($50)</button>
+          <button data-tool="commercial">Commercial ($75)</button>
+          <button data-tool="industrial">Industrial ($100)</button>
+          <button data-tool="powerplant">Power Plant ($500)</button>
+          <button data-tool="bulldoze" class="danger">Bulldoze</button>
+          <hr style="border-color: #444; margin: 4px 0" />
+          <button id="btn-save">Save Game</button>
+          <button id="btn-load">Load Game</button>
+        </div>
+        <div id="tile-info"></div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
