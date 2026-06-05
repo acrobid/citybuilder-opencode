@@ -176,11 +176,8 @@ export class WaveSystem {
         continue;
       }
 
-      const move = (Math.sqrt(b.vx * b.vx + b.vy * b.vy) * delta) / 1000;
-      const nx = b.vx != 0 ? b.vx / Math.sqrt(b.vx * b.vx + b.vy * b.vy) : 0;
-      const ny = b.vy != 0 ? b.vy / Math.sqrt(b.vx * b.vx + b.vy * b.vy) : 0;
-      b.worldX += nx * move;
-      b.worldY += ny * move;
+      b.worldX += b.vx * (delta / 1000);
+      b.worldY += b.vy * (delta / 1000);
 
       // Bullet enters planet surface — impact explosion
       if (isOnPlanet(b.worldX, b.worldY)) {
