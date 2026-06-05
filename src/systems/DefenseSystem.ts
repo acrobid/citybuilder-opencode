@@ -1,5 +1,12 @@
 import * as Phaser from "phaser";
-import { SATELLITE_TYPES, SYNERGY, SHIELD_BARRIER } from "../config.js";
+import {
+  SATELLITE_TYPES,
+  SYNERGY,
+  SHIELD_BARRIER,
+  PLANET_CENTER_X,
+  PLANET_CENTER_Y,
+  ION_BEAM_CONFIG,
+} from "../config.js";
 import type { OrbitRing, SatelliteType } from "../config.js";
 import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
 import { Enemy } from "../entities/Enemy.js";
@@ -9,11 +16,11 @@ import {
   drawMissileProj,
   drawPlasmaBlob,
   drawRailgunTracer,
-  drawIonBolt,
+  drawIonBeamLine,
   drawTeslaBolt,
   drawEMPWave,
   drawShieldWave,
-  drawDroneProj,
+  drawShrapnelProj,
   drawShieldBarrier,
 } from "../graphics/SatelliteGraphics.js";
 import { drawExplosion } from "../graphics/EnemyGraphics.js";
@@ -34,17 +41,18 @@ interface Projectile {
   // specials
   piercedEnemies: Set<Enemy>; // railgun
   chainCount: number; // tesla
-  droneLifetime: number; // drone hub
+  shrapnelLifetime: number; // shrapnel hub
 }
 
-// Drone entity for drone hub
-interface Drone {
+// Shrapnel projectile for shrapnel hub
+interface Shrapnel {
   worldX: number;
   worldY: number;
   targetEnemy: Enemy | null;
   lifetime: number;
   damage: number;
   speed: number;
+  angle: number; // fixed flight direction (radians)
 }
 
 interface Particle {
@@ -61,8 +69,9 @@ interface Particle {
 export class DefenseSystem {
   satellites: OrbitalSatellite[] = [];
   projectiles: Projectile[] = [];
-  drones: Drone[] = [];
+  shrapnels: Shrapnel[] = [];
   laserBeamTargets: Map<OrbitalSatellite, Enemy> = new Map();
+  ionBeamTargets: Map<OrbitalSatellite, Enemy> = new Map();
   private cooldowns: Map<OrbitalSatellite, number> = new Map();
   private _lastSynergyTime = 0;
   private _synergyDirty = true;
@@ -187,24 +196,41 @@ export class DefenseSystem {
       }
     }
 
-    // Track beam targets for continuous turrets (latch-on behavior)
+    // Track beam targets for continuous/ion beam turrets (latch-on behavior)
     for (const sat of this.satellites) {
-      if (sat.config.special !== "continuous") continue;
-      const current = this.laserBeamTargets.get(sat);
+      if (sat.config.special !== "continuous" && sat.config.special !== "ionBeam") continue;
+      const targetMap =
+        sat.config.special === "continuous" ? this.laserBeamTargets : this.ionBeamTargets;
+      const current = targetMap.get(sat);
       if (current && current.alive) {
         const dx = current.worldX - sat.worldX;
         const dy = current.worldY - sat.worldY;
         if (Math.sqrt(dx * dx + dy * dy) <= sat.range) continue; // keep latching
       }
       const target = this.findClosestEnemy(sat, enemies);
-      if (target) this.laserBeamTargets.set(sat, target);
-      else this.laserBeamTargets.delete(sat);
+      if (target) targetMap.set(sat, target);
+      else targetMap.delete(sat);
     }
 
     // Fire from each satellite
     for (const sat of this.satellites) {
       const config = sat.config;
       if (config.fireRate === 0) continue;
+
+      // Ion beam: manage fire/recharge cycle every frame
+      if (config.special === "ionBeam") {
+        if (sat.ionRechargeTimer > 0) {
+          sat.ionRechargeTimer -= delta;
+          continue;
+        }
+        if (sat.ionFireTimer > 0) {
+          sat.ionFireTimer -= delta;
+          if (sat.ionFireTimer <= 0) {
+            sat.ionRechargeTimer = ION_BEAM_CONFIG.rechargeDuration;
+            continue;
+          }
+        }
+      }
 
       const lastFire = this.cooldowns.get(sat) || 0;
       if (time - lastFire < sat.fireRate) continue;
@@ -224,8 +250,24 @@ export class DefenseSystem {
         continue;
       }
 
-      if (config.special === "drone") {
-        this.spawnDrones(sat, enemies);
+      if (config.special === "shrapnel") {
+        this.spawnShrapnel(sat, enemies);
+        this.cooldowns.set(sat, time);
+        continue;
+      }
+
+      if (config.special === "ionBeam") {
+        if (sat.ionRechargeTimer > 0) continue;
+        const target = this.ionBeamTargets.get(sat);
+        if (!target || !target.alive) continue;
+        const dx = target.worldX - sat.worldX;
+        const dy = target.worldY - sat.worldY;
+        if (Math.sqrt(dx * dx + dy * dy) > sat.range) continue;
+        if (sat.ionFireTimer <= 0) {
+          sat.ionFireTimer = ION_BEAM_CONFIG.fireDuration;
+        }
+        const beamWidth = this.getIonBeamWidth(sat);
+        this.damageEnemiesAlongBeam(sat, target, enemies, beamWidth);
         this.cooldowns.set(sat, time);
         continue;
       }
@@ -253,12 +295,12 @@ export class DefenseSystem {
         distTraveled: 0,
         piercedEnemies: new Set(),
         chainCount: 0,
-        droneLifetime: 0,
+        shrapnelLifetime: 0,
       });
     }
 
-    // Update drones
-    this.updateDrones(delta, enemies);
+    // Update shrapnel
+    this.updateShrapnel(delta, enemies);
 
     // Update projectiles
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -360,14 +402,14 @@ export class DefenseSystem {
       case "railgun":
         return 0xff4444;
       case "ion":
-        return 0x88aaff;
+        return 0xffdd44;
       case "tesla":
         return 0x00ccff;
       case "emp":
         return 0xffff44;
       case "shield":
         return 0x88ccff;
-      case "drone":
+      case "shrapnel":
         return 0xffaa00;
       default:
         return 0xffaa00;
@@ -439,37 +481,6 @@ export class DefenseSystem {
         }
       }
       this.addExplosion(p.worldX, p.worldY, 20, 600, color);
-      p.alive = false;
-      return;
-    }
-
-    if (config.special === "beam" && p.targetEnemy) {
-      // Ion: hit all enemies along the beam path
-      const startX = p.worldX;
-      const startY = p.worldY;
-      for (const e of enemies) {
-        if (!e.alive) continue;
-        const dx = e.worldX - startX;
-        const dy = e.worldY - startY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 20) {
-          const killed = e.takeDamage(p.damage);
-          if (killed) {
-            this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 500, color);
-          }
-        }
-      }
-      const killed = p.targetEnemy.takeDamage(p.damage);
-      if (killed) {
-        this.addExplosion(
-          p.targetEnemy.worldX,
-          p.targetEnemy.worldY,
-          p.targetEnemy.radius * 1.5,
-          500,
-          color,
-        );
-      }
-      this.addExplosion(p.worldX, p.worldY, 15, 400, color);
       p.alive = false;
       return;
     }
@@ -556,6 +567,46 @@ export class DefenseSystem {
 
   // ── Special effects ──
 
+  // ── Ion Beam ──
+
+  private getIonBeamWidth(sat: OrbitalSatellite): number {
+    if (sat.ionFireTimer <= 0) return ION_BEAM_CONFIG.minBeamWidth;
+    const t = 1 - sat.ionFireTimer / ION_BEAM_CONFIG.fireDuration;
+    const w =
+      ION_BEAM_CONFIG.minBeamWidth +
+      (ION_BEAM_CONFIG.maxBeamWidth - ION_BEAM_CONFIG.minBeamWidth) * t;
+    return w;
+  }
+
+  private damageEnemiesAlongBeam(
+    sat: OrbitalSatellite,
+    target: Enemy,
+    enemies: Enemy[],
+    beamWidth: number,
+  ): void {
+    const dx = target.worldX - sat.worldX;
+    const dy = target.worldY - sat.worldY;
+    const beamLen = Math.sqrt(dx * dx + dy * dy);
+    if (beamLen < 1) return;
+    const nx = dx / beamLen;
+    const ny = dy / beamLen;
+    const color = 0xffdd44;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const ex = e.worldX - sat.worldX;
+      const ey = e.worldY - sat.worldY;
+      const proj = ex * nx + ey * ny;
+      if (proj < 0) continue;
+      const perpDist = Math.abs(ex * -ny + ey * nx);
+      if (perpDist < beamWidth) {
+        const killed = e.takeDamage(sat.damage);
+        if (killed) {
+          this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 500, color);
+        }
+      }
+    }
+  }
+
   private applyGravitySlow(sat: OrbitalSatellite, enemies: Enemy[], _delta: number): void {
     for (const e of enemies) {
       if (!e.alive) continue;
@@ -587,66 +638,81 @@ export class DefenseSystem {
     }
   }
 
-  private spawnDrones(sat: OrbitalSatellite, enemies: Enemy[]): void {
-    const closest = this.findClosestEnemy(sat, enemies);
-    if (!closest) return;
-
-    for (let i = 0; i < 2; i++) {
-      const offX = (Math.random() - 0.5) * 20;
-      const offY = (Math.random() - 0.5) * 20;
-      this.drones.push({
-        worldX: sat.worldX + offX,
-        worldY: sat.worldY + offY,
-        targetEnemy: closest,
-        lifetime: 8000,
+  private spawnShrapnel(sat: OrbitalSatellite, enemies: Enemy[]): void {
+    // Don't fire if no enemies in range
+    if (
+      !enemies.some(
+        (e) => e.alive && Math.hypot(e.worldX - sat.worldX, e.worldY - sat.worldY) <= sat.range,
+      )
+    )
+      return;
+    const count = 10;
+    const outwardAngle = Math.atan2(sat.worldY - PLANET_CENTER_Y, sat.worldX - PLANET_CENTER_X);
+    const arc = (Math.PI * 2) / 3; // 120° spread facing away from planet
+    for (let i = 0; i < count; i++) {
+      const angle = outwardAngle - arc / 2 + (i / (count - 1)) * arc + (Math.random() - 0.5) * 0.25;
+      this.shrapnels.push({
+        worldX: sat.worldX,
+        worldY: sat.worldY,
+        targetEnemy: null,
+        lifetime: 4000,
         damage: sat.config.damage,
-        speed: 200,
+        speed: 350,
+        angle,
       });
     }
   }
 
-  private updateDrones(delta: number, enemies: Enemy[]): void {
-    for (let i = this.drones.length - 1; i >= 0; i--) {
-      const d = this.drones[i];
+  private updateShrapnel(delta: number, enemies: Enemy[]): void {
+    for (let i = this.shrapnels.length - 1; i >= 0; i--) {
+      const d = this.shrapnels[i];
       d.lifetime -= delta;
       if (d.lifetime <= 0) {
-        this.drones[i] = this.drones[this.drones.length - 1];
-        this.drones.pop();
+        this.addExplosion(d.worldX, d.worldY, 8, 300, 0xffaa00);
+        this.shrapnels[i] = this.shrapnels[this.shrapnels.length - 1];
+        this.shrapnels.pop();
         continue;
       }
 
-      // Find or refresh target
-      if (!d.targetEnemy || !d.targetEnemy.alive) {
-        d.targetEnemy = this.findClosestEnemyAt(d.worldX, d.worldY, 300, enemies, new Set());
-      }
-      if (!d.targetEnemy) {
-        this.drones[i] = this.drones[this.drones.length - 1];
-        this.drones.pop();
-        continue;
-      }
-
-      // Move toward target
-      const dx = d.targetEnemy.worldX - d.worldX;
-      const dy = d.targetEnemy.worldY - d.worldY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 6) {
-        const killed = d.targetEnemy.takeDamage(d.damage);
-        if (killed) {
-          this.addExplosion(
-            d.targetEnemy.worldX,
-            d.targetEnemy.worldY,
-            d.targetEnemy.radius * 1.5,
-            400,
-            0xffaa00,
-          );
-        }
-        this.drones[i] = this.drones[this.drones.length - 1];
-        this.drones.pop();
-        continue;
-      }
+      // Move in fixed straight-line direction
       const move = (d.speed * delta) / 1000;
-      d.worldX += (dx / dist) * move;
-      d.worldY += (dy / dist) * move;
+      d.worldX += Math.cos(d.angle) * move;
+      d.worldY += Math.sin(d.angle) * move;
+
+      // Check collision with any enemy
+      let hit = false;
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        const dx = e.worldX - d.worldX;
+        const dy = e.worldY - d.worldY;
+        if (Math.sqrt(dx * dx + dy * dy) < e.radius + 6) {
+          const killed = e.takeDamage(d.damage);
+          if (killed) {
+            this.addExplosion(e.worldX, e.worldY, e.radius * 1.5, 400, 0xffaa00);
+          }
+          // Knockback away from planet center
+          const kbAngle = Math.atan2(e.worldY - PLANET_CENTER_Y, e.worldX - PLANET_CENTER_X);
+          e.knockbackVx += Math.cos(kbAngle) * 300;
+          e.knockbackVy += Math.sin(kbAngle) * 300;
+          this.addExplosion(d.worldX, d.worldY, 12, 300, 0xffcc44);
+          hit = true;
+          break;
+        }
+      }
+
+      if (hit) {
+        this.shrapnels[i] = this.shrapnels[this.shrapnels.length - 1];
+        this.shrapnels.pop();
+        continue;
+      }
+
+      // Remove if too far from planet
+      const dx = d.worldX - PLANET_CENTER_X;
+      const dy = d.worldY - PLANET_CENTER_Y;
+      if (Math.sqrt(dx * dx + dy * dy) > 1200) {
+        this.shrapnels[i] = this.shrapnels[this.shrapnels.length - 1];
+        this.shrapnels.pop();
+      }
     }
   }
 
@@ -694,6 +760,8 @@ export class DefenseSystem {
     angle: number;
     barriers: number[];
     barrierRegenTimer: number;
+    ionFireTimer: number;
+    ionRechargeTimer: number;
   }[] {
     return this.satellites.map((s) => ({
       type: s.type,
@@ -701,6 +769,8 @@ export class DefenseSystem {
       angle: s.angle,
       barriers: s.barriers ? [...s.barriers] : [],
       barrierRegenTimer: s.barrierRegenTimer,
+      ionFireTimer: s.ionFireTimer,
+      ionRechargeTimer: s.ionRechargeTimer,
     }));
   }
 
@@ -711,15 +781,24 @@ export class DefenseSystem {
       angle: number;
       barriers?: number[];
       barrierRegenTimer?: number;
+      ionFireTimer?: number;
+      ionRechargeTimer?: number;
     }[],
   ): void {
+    // Migrate old type names
+    const typeAlias: Record<string, string> = { drone: "shrapnel" };
     this.satellites = [];
     this.cooldowns.clear();
     for (const d of data) {
-      const sat = new OrbitalSatellite(d.type as SatelliteType, d.ring as OrbitRing, d.angle);
+      const resolvedType = typeAlias[d.type] ?? d.type;
+      const sat = new OrbitalSatellite(resolvedType as SatelliteType, d.ring as OrbitRing, d.angle);
       if (d.barriers && d.barriers.length > 0) {
         sat.barriers = d.barriers;
         sat.barrierRegenTimer = d.barrierRegenTimer ?? SHIELD_BARRIER.regenTime;
+      }
+      if (d.ionFireTimer !== undefined) {
+        sat.ionFireTimer = d.ionFireTimer;
+        sat.ionRechargeTimer = d.ionRechargeTimer ?? 0;
       }
       this.satellites.push(sat);
       this.cooldowns.set(sat, 0);
@@ -749,16 +828,32 @@ export class DefenseSystem {
       }
     }
 
-    // Drones
-    for (const d of this.drones) {
+    // Shrapnel
+    for (const d of this.shrapnels) {
       if (!inView(d.worldX, d.worldY)) continue;
-      drawDroneProj(g, d.worldX, d.worldY);
+      drawShrapnelProj(g, d.worldX, d.worldY, d.angle);
     }
 
     // Laser beams (continuous)
     for (const [sat, target] of this.laserBeamTargets) {
       if (!target.alive) continue;
       drawLaserBeamLine(g, sat.worldX, sat.worldY, target.worldX, target.worldY);
+    }
+
+    // Ion beams
+    for (const [sat, target] of this.ionBeamTargets) {
+      if (!target.alive) continue;
+      if (sat.ionRechargeTimer > 0 || sat.ionFireTimer <= 0) continue;
+      const dx = target.worldX - sat.worldX;
+      const dy = target.worldY - sat.worldY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 1) continue;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const extX = target.worldX + nx * 150;
+      const extY = target.worldY + ny * 150;
+      const beamWidth = this.getIonBeamWidth(sat);
+      drawIonBeamLine(g, sat.worldX, sat.worldY, extX, extY, beamWidth);
     }
 
     // Projectiles
@@ -778,9 +873,7 @@ export class DefenseSystem {
         case "railgun":
           drawRailgunTracer(g, p.worldX, p.worldY);
           break;
-        case "ion":
-          drawIonBolt(g, p.worldX, p.worldY);
-          break;
+
         case "tesla":
           drawTeslaBolt(g, p.worldX, p.worldY);
           break;
@@ -790,8 +883,8 @@ export class DefenseSystem {
         case "shield":
           drawShieldWave(g, p.worldX, p.worldY);
           break;
-        case "drone":
-          drawDroneProj(g, p.worldX, p.worldY);
+        case "shrapnel":
+          drawShrapnelProj(g, p.worldX, p.worldY, p.angle);
           break;
         default:
           drawLaserBeam(g, p.worldX, p.worldY);

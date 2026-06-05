@@ -21,6 +21,9 @@ export class OrbitalSatellite {
   hasTwinSynergy = false;
   hasTrinitySynergy = false;
   hasCrossRingSynergy = false;
+  // Ion beam state (only used for "ionBeam" type)
+  ionFireTimer = 0;
+  ionRechargeTimer = 0;
   // Shield barrier state (only used for "shield" type)
   barriers: number[] = [];
   barrierRegenTimer = 0;

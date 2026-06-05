@@ -47,8 +47,8 @@ export function drawSatellite(g: Phaser.GameObjects.Graphics, sat: OrbitalSatell
     case "shield":
       drawShieldSat(g, cx, cy);
       break;
-    case "drone":
-      drawDroneSat(g, cx, cy);
+    case "shrapnel":
+      drawShrapnelSat(g, cx, cy);
       break;
   }
 }
@@ -83,9 +83,9 @@ function drawRailgunSat(g: Phaser.GameObjects.Graphics, cx: number, cy: number):
   g.fillRect(cx - 3, cy - 1, 6, 2);
 }
 
-// Type 5: Ion Beam — blue cross
+// Type 5: Ion Beam — gold/yellow cross
 function drawIonSat(g: Phaser.GameObjects.Graphics, cx: number, cy: number): void {
-  g.fillStyle(0x6688cc, 1);
+  g.fillStyle(0x886633, 1);
   g.fillRect(cx - 4, cy - 1, 8, 2);
   g.fillRect(cx - 1, cy - 4, 2, 8);
   g.fillStyle(SPACE_COLORS.ION_BEAM, 0.8);
@@ -129,12 +129,12 @@ function drawShieldSat(g: Phaser.GameObjects.Graphics, cx: number, cy: number): 
   g.fillRect(cx - 1, cy - 1, 2, 2);
 }
 
-// Type 10: Drone Hub — orange hexagon (simplified as circle with dots)
-function drawDroneSat(g: Phaser.GameObjects.Graphics, cx: number, cy: number): void {
+// Type 10: Shrapnel Hub — orange hexagon (simplified as circle with dots)
+function drawShrapnelSat(g: Phaser.GameObjects.Graphics, cx: number, cy: number): void {
   fillCircle(g, cx, cy, 5, 0x553300, 1);
-  g.fillStyle(SPACE_COLORS.DRONE_BODY, 0.9);
+  g.fillStyle(SPACE_COLORS.SHRAPNEL_BODY, 0.9);
   fillCircle(g, cx, cy, 3, 0xffaa00, 0.7);
-  // Small drone dots
+  // Small shrapnel dots
   g.fillStyle(0xffcc44, 0.8);
   g.fillRect(cx - 5, cy - 2, 2, 2);
   g.fillRect(cx + 3, cy + 2, 2, 2);
@@ -185,6 +185,28 @@ export function drawLaserBeamLine(
   g.lineBetween(x1, y1, x2, y2);
   // White-hot center
   g.lineStyle(1, 0xffaa88, 0.9);
+  g.lineBetween(x1, y1, x2, y2);
+}
+
+export function drawIonBeamLine(
+  g: Phaser.GameObjects.Graphics,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  width: number,
+): void {
+  const outer = Math.max(2, Math.round(width * 0.5));
+  const mid = Math.max(1, Math.round(width * 0.28));
+  const core = Math.max(1, Math.round(width * 0.14));
+  const center = Math.max(1, Math.round(width * 0.05));
+  g.lineStyle(outer, 0xffdd44, 0.06);
+  g.lineBetween(x1, y1, x2, y2);
+  g.lineStyle(mid, 0xffdd44, 0.18);
+  g.lineBetween(x1, y1, x2, y2);
+  g.lineStyle(core, 0xffff44, 0.55);
+  g.lineBetween(x1, y1, x2, y2);
+  g.lineStyle(center, 0xffffaa, 0.9);
   g.lineBetween(x1, y1, x2, y2);
 }
 
@@ -277,9 +299,35 @@ export function drawShieldBarrier(
   g.fillRect(cx - 10, cy + 4, 20, 1);
 }
 
-export function drawDroneProj(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
-  g.fillStyle(SPACE_COLORS.DRONE_BODY, 1);
-  g.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
-  g.fillStyle(0xffcc44, 0.7);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+export function drawShrapnelProj(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  angle: number,
+): void {
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  const perpCos = Math.cos(angle + Math.PI / 2);
+  const perpSin = Math.sin(angle + Math.PI / 2);
+
+  // Engine glow (trailing)
+  const glowX = x - cosA * 6;
+  const glowY = y - sinA * 6;
+  fillCircle(g, Math.round(glowX), Math.round(glowY), 4, 0xff8800, 0.25);
+  fillCircle(g, Math.round(glowX - cosA * 3), Math.round(glowY - sinA * 3), 3, 0xff6600, 0.12);
+
+  // Small triangular body
+  const tipX = x + cosA * 4;
+  const tipY = y + sinA * 4;
+  const leftX = x + perpCos * 3 - cosA * 2;
+  const leftY = y + perpSin * 3 - sinA * 2;
+  const rightX = x - perpCos * 3 - cosA * 2;
+  const rightY = y - perpSin * 3 - sinA * 2;
+
+  g.fillStyle(SPACE_COLORS.SHRAPNEL_BODY, 1);
+  g.fillTriangle(tipX, tipY, leftX, leftY, rightX, rightY);
+
+  // Bright core
+  g.fillStyle(0xffcc44, 0.8);
+  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
 }

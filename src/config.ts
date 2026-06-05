@@ -78,12 +78,22 @@ export const SATELLITE_TYPES = {
   ion: {
     name: "Ion Beam",
     ring: "outer" as OrbitRing,
-    fireRate: 700,
-    damage: 12,
-    range: 500,
+    fireRate: 200,
+    damage: 2,
+    range: 650,
     cost: 350,
     projectileSpeed: 600,
-    special: "beam",
+    special: "ionBeam",
+  },
+  shrapnel: {
+    name: "Shrapnel Hub",
+    ring: "outer" as OrbitRing,
+    fireRate: 3000,
+    damage: 15,
+    range: 400,
+    cost: 450,
+    projectileSpeed: 0,
+    special: "shrapnel",
   },
   tesla: {
     name: "Tesla Coil",
@@ -124,16 +134,6 @@ export const SATELLITE_TYPES = {
     cost: 400,
     projectileSpeed: 0,
     special: "shield",
-  },
-  drone: {
-    name: "Drone Hub",
-    ring: "outer" as OrbitRing,
-    fireRate: 3000,
-    damage: 15,
-    range: 400,
-    cost: 450,
-    projectileSpeed: 0,
-    special: "drone",
   },
 } as const;
 export type SatelliteType = keyof typeof SATELLITE_TYPES;
@@ -180,6 +180,14 @@ export const WAVE_CONFIG = {
   waveRewardPerWave: 500, // extra money per wave level
 } as const;
 
+// ── Ion Beam Config ──
+export const ION_BEAM_CONFIG = {
+  fireDuration: 3000,
+  rechargeDuration: 8000,
+  minBeamWidth: 20,
+  maxBeamWidth: 50,
+} as const;
+
 // ── Colors ──
 export const SPACE_COLORS = {
   SPACE_BG: 0x050510,
@@ -194,10 +202,10 @@ export const SPACE_COLORS = {
   MISSILE_TRAIL: 0xff8800,
   PLASMA_BLOB: 0x00ff88,
   RAILGUN_TRACER: 0xff4444,
-  ION_BEAM: 0x88aaff,
+  ION_BEAM: 0xffdd44,
   TESLA_ARC: 0x00ccff,
   SHIELD_ARC: 0x88ccff,
-  DRONE_BODY: 0xffaa00,
+  SHRAPNEL_BODY: 0xffaa00,
   EXPLOSION: 0xffaa00,
   ENEMY_BULLET: 0xff4444,
 } as const;
