@@ -284,9 +284,21 @@ export class DefenseSystem {
         const move = (p.speed * delta) / 1000;
         const nx = dx / dist;
         const ny = dy / dist;
-        p.worldX += nx * move;
-        p.worldY += ny * move;
-        p.angle = Math.atan2(ny, nx);
+
+        if (p.drawType === "missile") {
+          const px0 = p.worldX;
+          const py0 = p.worldY;
+          const perpAngle = Math.atan2(ny, nx) + Math.PI / 2;
+          const spiralOffset = Math.sin(p.distTraveled * 0.025) * 5;
+          p.worldX += nx * move + Math.cos(perpAngle) * spiralOffset;
+          p.worldY += ny * move + Math.sin(perpAngle) * spiralOffset;
+          p.angle = Math.atan2(p.worldY - py0, p.worldX - px0);
+        } else {
+          p.worldX += nx * move;
+          p.worldY += ny * move;
+          p.angle = Math.atan2(ny, nx);
+        }
+
         p.distTraveled += move;
       } else {
         // Target dead: tesla tries to chain, others fly through
@@ -476,6 +488,26 @@ export class DefenseSystem {
       }
       p.targetEnemy.stunTimer = 1500;
       this.addExplosion(p.worldX, p.worldY, 25, 700, color);
+      p.alive = false;
+      return;
+    }
+
+    // Missile: big AoE nuke
+    if (p.drawType === "missile") {
+      const nukeRadius = 80;
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        const dx = e.worldX - p.worldX;
+        const dy = e.worldY - p.worldY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < nukeRadius) {
+          const falloff = Math.max(0.5, 1 - (dist / nukeRadius) * 0.5);
+          e.takeDamage(Math.floor(p.damage * falloff));
+        }
+      }
+      this.addExplosion(p.worldX, p.worldY, nukeRadius, 1500, color);
+      this.spawnExplosionParticles(p.worldX, p.worldY, 50, 7, 0xff8800);
+      this.spawnExplosionParticles(p.worldX, p.worldY, 30, 5, 0xffcc00);
       p.alive = false;
       return;
     }

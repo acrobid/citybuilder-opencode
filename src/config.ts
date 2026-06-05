@@ -48,10 +48,10 @@ export const SATELLITE_TYPES = {
   missile: {
     name: "Missile Battery",
     ring: "mid" as OrbitRing,
-    fireRate: 1400,
+    fireRate: 2800,
     damage: 35,
     range: 450,
-    cost: 300,
+    cost: 500,
     projectileSpeed: 300,
     special: null,
   },

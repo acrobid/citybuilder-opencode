@@ -194,11 +194,20 @@ export function drawMissileProj(
   y: number,
   angle: number,
 ): void {
-  // Trail
-  const tx = Math.round(x - Math.cos(angle) * 6);
-  const ty = Math.round(y - Math.sin(angle) * 6);
-  g.fillStyle(SPACE_COLORS.MISSILE_TRAIL, 0.5);
-  g.fillRect(tx - 2, ty - 2, 5, 5);
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  // Big smoke trail — expanding puffs
+  for (let i = 0; i < 6; i++) {
+    const t = (i + 1) / 7;
+    const dist = t * 30 + 2;
+    const size = 8 + t * 14;
+    const alpha = (1 - t) * 0.25;
+    const perp = ((i & 1) * 2 - 1) * t * 3;
+    const tx = Math.round(x - cosA * dist - sinA * perp);
+    const ty = Math.round(y - sinA * dist + cosA * perp);
+    g.fillStyle(SPACE_COLORS.MISSILE_TRAIL, alpha);
+    g.fillRect(tx - size / 2, ty - size / 2, size, size);
+  }
   // Body
   g.fillStyle(SPACE_COLORS.MISSILE_TRAIL, 1);
   g.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
