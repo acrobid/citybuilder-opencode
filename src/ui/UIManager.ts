@@ -22,6 +22,7 @@ export class UIManager {
   phaseEl: HTMLElement | null;
   waveEl: HTMLElement | null;
   enemiesEl: HTMLElement | null;
+  fpsEl: HTMLElement | null;
   gameOverEl: HTMLElement | null;
   goWaveEl: HTMLElement | null;
 
@@ -37,6 +38,7 @@ export class UIManager {
     this.phaseEl = document.getElementById("stat-phase");
     this.waveEl = document.getElementById("stat-wave");
     this.enemiesEl = document.getElementById("stat-enemies");
+    this.fpsEl = document.getElementById("stat-fps");
     this.gameOverEl = document.getElementById("game-over");
     this.goWaveEl = document.getElementById("go-wave");
     document.getElementById("btn-restart")?.addEventListener("click", () => {
@@ -117,7 +119,7 @@ export class UIManager {
     });
   }
 
-  update(): void {
+  update(fps: number): void {
     const gs = window.gameState;
     if (this.moneyEl) this.moneyEl.textContent = String(gs.money);
     if (this.popEl) this.popEl.textContent = String(gs.population);
@@ -132,6 +134,10 @@ export class UIManager {
     if (this.phaseEl) this.phaseEl.textContent = phase;
     if (this.waveEl) this.waveEl.textContent = String(gs.wave);
     if (this.enemiesEl) this.enemiesEl.textContent = String(gs.enemiesRemaining);
+    if (this.fpsEl) {
+      this.fpsEl.textContent = String(fps);
+      this.fpsEl.style.color = fps >= 50 ? "#66cc66" : fps >= 30 ? "#cccc66" : "#cc6666";
+    }
   }
 
   showGameOver(wave: number): void {

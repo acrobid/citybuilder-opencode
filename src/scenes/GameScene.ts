@@ -40,6 +40,9 @@ export class GameScene extends Phaser.Scene {
   waveSystem: WaveSystem;
   defenseSystem: DefenseSystem;
   private _gameOver = false;
+  private _fpsFrames = 0;
+  private _fpsLastTime = 0;
+  private _fps = 0;
 
   constructor() {
     super("GameScene");
@@ -92,6 +95,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    this._fpsFrames++;
+    if (time - this._fpsLastTime >= 500) {
+      this._fps = Math.round((this._fpsFrames / (time - this._fpsLastTime)) * 1000);
+      this._fpsFrames = 0;
+      this._fpsLastTime = time;
+    }
+
     if (this._gameOver) {
       if (this.worldMap.dirty) {
         this.worldMap.render(this.mapGraphics);
@@ -131,7 +141,7 @@ export class GameScene extends Phaser.Scene {
     this.populationSystem.update(time, this.worldMap);
     this.waveSystem.update(time, delta, this.worldMap, this.defenseSystem.satellites);
     this.defenseSystem.update(time, delta, this.waveSystem.enemies);
-    this.uiManager.update();
+    this.uiManager.update(this._fps);
 
     if (
       !this._gameOver &&
