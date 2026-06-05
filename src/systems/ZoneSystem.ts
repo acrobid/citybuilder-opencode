@@ -7,18 +7,16 @@ export class ZoneSystem {
 
   tick(worldMap: WorldMap): void {
     let changed = false;
-    for (let y = 0; y < worldMap.rows; y++) {
-      for (let x = 0; x < worldMap.cols; x++) {
-        const tile = worldMap.tiles[y][x];
-        if (!this.isZoneType(tile.zone)) continue;
-        if (tile.level >= 4) continue;
-        if (!tile.roadConnected) continue;
-        if (!tile.isPowered) continue;
+    for (const { x, y } of worldMap.planetTiles) {
+      const tile = worldMap.tiles[y][x];
+      if (!this.isZoneType(tile.zone)) continue;
+      if (tile.level >= 4) continue;
+      if (!tile.roadConnected) continue;
+      if (!tile.isPowered) continue;
 
-        if (Math.random() < this.growthChance) {
-          tile.level++;
-          changed = true;
-        }
+      if (Math.random() < this.growthChance) {
+        tile.level++;
+        changed = true;
       }
     }
     if (changed) worldMap.markDirty();

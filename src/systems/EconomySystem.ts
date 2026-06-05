@@ -17,26 +17,24 @@ export class EconomySystem {
     let income = 0;
     let expenses = 0;
 
-    for (let y = 0; y < worldMap.rows; y++) {
-      for (let x = 0; x < worldMap.cols; x++) {
-        const tile = worldMap.tiles[y][x];
-        switch (tile.zone) {
-          case "road":
-            expenses += 1;
-            break;
-          case "residential":
-            income += 10 * tile.level;
-            break;
-          case "commercial":
-            income += 20 * tile.level;
-            break;
-          case "industrial":
-            income += 15 * tile.level;
-            break;
-          case "powerplant":
-            expenses += 25;
-            break;
-        }
+    for (const { x, y } of worldMap.planetTiles) {
+      const tile = worldMap.tiles[y][x];
+      switch (tile.zone) {
+        case "road":
+          expenses += 1;
+          break;
+        case "residential":
+          income += 10 * tile.level;
+          break;
+        case "commercial":
+          income += 20 * tile.level;
+          break;
+        case "industrial":
+          income += 15 * tile.level;
+          break;
+        case "powerplant":
+          expenses += 25;
+          break;
       }
     }
 
