@@ -5,9 +5,11 @@ import {
   SHIELD_BARRIER,
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
+  PLANET_RADIUS,
 } from "../config.js";
 import type { WorldMap } from "../map/WorldMap.js";
 import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
+import { isOnPlanet } from "../graphics/SpaceGraphics.js";
 
 function randomSpawnPos(): { x: number; y: number } {
   const angle = Math.random() * Math.PI * 2;
@@ -32,10 +34,21 @@ interface EnemyBullet {
   alive: boolean;
 }
 
+interface SatelliteCrash {
+  worldX: number;
+  worldY: number;
+  angle: number;
+  startDist: number;
+  elapsed: number;
+  duration: number;
+}
+
 export class WaveSystem {
   enemies: Enemy[] = [];
   enemyBullets: EnemyBullet[] = [];
-  enemyBulletExplosions: { x: number; y: number; time: number; color?: number }[] = [];
+  enemyBulletExplosions: { x: number; y: number; time: number; color?: number; radius?: number }[] =
+    [];
+  satelliteCrashes: SatelliteCrash[] = [];
   private waveNumber = 0;
   private waveActive = false;
   private inBuildPhase = true;
@@ -66,6 +79,7 @@ export class WaveSystem {
       // Update enemies (mothership-scout spawned enemies may still exist)
       this.updateEnemies(delta, worldMap, satellites);
       this.updateEnemyBullets(delta, satellites);
+      this.updateSatelliteCrashes(delta, worldMap);
       window.gameState.enemiesRemaining =
         this.enemies.length + (this.spawnQueue.length - this.spawnIndex);
       return;
@@ -86,6 +100,7 @@ export class WaveSystem {
     // Update all enemies
     this.updateEnemies(delta, worldMap, satellites);
     this.updateEnemyBullets(delta, satellites);
+    this.updateSatelliteCrashes(delta, worldMap);
 
     // Check wave complete
     if (this.spawnIndex >= this.spawnQueue.length && this.enemies.length === 0 && this.waveActive) {
@@ -127,7 +142,7 @@ export class WaveSystem {
         if (enemy.shootTimer <= 0) {
           const cooldown = enemy.type === "mothership" ? 800 : 2000;
           enemy.shootTimer = cooldown;
-          const sat = this.findNearestSatellite(enemy, satellites);
+          const sat = this.findBestSatelliteTarget(enemy, satellites);
           if (sat) {
             const dx = sat.worldX - enemy.worldX;
             const dy = sat.worldY - enemy.worldY;
@@ -163,6 +178,19 @@ export class WaveSystem {
       const ny = b.vy != 0 ? b.vy / Math.sqrt(b.vx * b.vx + b.vy * b.vy) : 0;
       b.worldX += nx * move;
       b.worldY += ny * move;
+
+      // Bullet enters planet surface — impact explosion
+      if (isOnPlanet(b.worldX, b.worldY)) {
+        b.alive = false;
+        this.enemyBulletExplosions.push({
+          x: b.worldX,
+          y: b.worldY,
+          time: 400,
+          color: 0xff6600,
+          radius: 8,
+        });
+        continue;
+      }
 
       // Check collision with shield barriers
       let blockedByBarrier = false;
@@ -200,7 +228,18 @@ export class WaveSystem {
           this.enemyBulletExplosions.push({ x: b.worldX, y: b.worldY, time: 200 });
           if (sat.health <= 0) {
             sat.alive = false;
-            this.enemyBulletExplosions.push({ x: sat.worldX, y: sat.worldY, time: 400 });
+            this.enemyBulletExplosions.push({ x: sat.worldX, y: sat.worldY, time: 400, radius: 6 });
+            const cdx = sat.worldX - PLANET_CENTER_X;
+            const cdy = sat.worldY - PLANET_CENTER_Y;
+            const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+            this.satelliteCrashes.push({
+              worldX: sat.worldX,
+              worldY: sat.worldY,
+              angle: Math.atan2(cdy, cdx),
+              startDist: cdist,
+              elapsed: 0,
+              duration: 600,
+            });
           }
           break;
         }
@@ -223,23 +262,51 @@ export class WaveSystem {
     }
   }
 
-  private findNearestSatellite(
+  private findBestSatelliteTarget(
     enemy: Enemy,
     satellites: OrbitalSatellite[],
   ): OrbitalSatellite | null {
+    const maxRange = 600;
     let best: OrbitalSatellite | null = null;
-    let bestDist = 600;
+    let bestDist = maxRange;
     for (const sat of satellites) {
       if (!sat.alive) continue;
       const dx = sat.worldX - enemy.worldX;
       const dy = sat.worldY - enemy.worldY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = sat;
-      }
+      if (dist >= bestDist) continue;
+      if (this.lineIntersectsPlanet(enemy.worldX, enemy.worldY, sat.worldX, sat.worldY)) continue;
+      bestDist = dist;
+      best = sat;
     }
     return best;
+  }
+
+  private lineIntersectsPlanet(x1: number, y1: number, x2: number, y2: number): boolean {
+    const cx = PLANET_CENTER_X;
+    const cy = PLANET_CENTER_Y;
+    const r = PLANET_RADIUS;
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const fx = x1 - cx;
+    const fy = y1 - cy;
+
+    const a = dx * dx + dy * dy;
+    if (a < 0.001) {
+      return Math.sqrt(fx * fx + fy * fy) <= r;
+    }
+
+    const b = 2 * (fx * dx + fy * dy);
+    const c = fx * fx + fy * fy - r * r;
+    let discriminant = b * b - 4 * a * c;
+
+    if (discriminant < 0) return false;
+    discriminant = Math.sqrt(discriminant);
+    const t1 = (-b - discriminant) / (2 * a);
+    const t2 = (-b + discriminant) / (2 * a);
+
+    return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
   }
 
   private spawnEnemy(type: EnemyTypeName): void {
@@ -306,6 +373,57 @@ export class WaveSystem {
     worldMap.recalculateConnectivity();
   }
 
+  private updateSatelliteCrashes(delta: number, worldMap: WorldMap): void {
+    for (let i = this.satelliteCrashes.length - 1; i >= 0; i--) {
+      const crash = this.satelliteCrashes[i];
+      crash.elapsed += delta;
+      const t = Math.min(crash.elapsed / crash.duration, 1);
+      crash.worldX =
+        PLANET_CENTER_X +
+        Math.cos(crash.angle) * (crash.startDist + (PLANET_RADIUS - crash.startDist) * t);
+      crash.worldY =
+        PLANET_CENTER_Y +
+        Math.sin(crash.angle) * (crash.startDist + (PLANET_RADIUS - crash.startDist) * t);
+
+      if (t >= 1) {
+        this.enemyBulletExplosions.push({
+          x: crash.worldX,
+          y: crash.worldY,
+          time: 800,
+          color: 0xff4400,
+          radius: 14,
+        });
+        this.doCrashImpact(crash.worldX, crash.worldY, worldMap);
+        this.satelliteCrashes.splice(i, 1);
+      }
+    }
+  }
+
+  private doCrashImpact(x: number, y: number, worldMap: WorldMap): void {
+    const tile = worldMap.tileAt(x, y);
+    if (!tile) return;
+    if (tile.zone !== "empty" && tile.zone !== "road") {
+      if (tile.health === undefined || tile.health <= 0) {
+        tile.health = tile.zone === "powerplant" ? 5 : 3;
+      }
+      tile.health -= 2;
+      if (tile.health <= 0) {
+        tile.zone = "empty";
+        tile.level = 0;
+        tile.health = 0;
+      }
+    } else if (tile.zone === "road") {
+      if (tile.health === undefined || tile.health <= 0) tile.health = 2;
+      tile.health -= 2;
+      if (tile.health <= 0) {
+        tile.zone = "empty";
+        tile.level = 0;
+        tile.health = 0;
+      }
+    }
+    worldMap.recalculateConnectivity();
+  }
+
   private startNextWave(time: number): void {
     this.waveNumber++;
     this.waveActive = true;
@@ -354,6 +472,7 @@ export class WaveSystem {
     this.enemies = [];
     this.enemyBullets = [];
     this.enemyBulletExplosions = [];
+    this.satelliteCrashes = [];
     this.spawnQueue = [];
     this.spawnIndex = 0;
 
@@ -418,6 +537,7 @@ export class WaveSystem {
     this.enemies = [];
     this.enemyBullets = [];
     this.enemyBulletExplosions = [];
+    this.satelliteCrashes = [];
     window.gameState.wave = waveNumber;
     window.gameState.waveActive = false;
     window.gameState.enemiesRemaining = 0;

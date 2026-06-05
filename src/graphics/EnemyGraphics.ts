@@ -1,5 +1,5 @@
 import Phaser, { Math as PhaserMath } from "phaser";
-import { SPACE_COLORS } from "../config.js";
+import { SPACE_COLORS, PLANET_CENTER_X, PLANET_CENTER_Y } from "../config.js";
 import { Enemy } from "../entities/Enemy.js";
 import { fillCircle } from "./SpaceGraphics.js";
 
@@ -214,9 +214,30 @@ export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   }
 }
 
-export function drawEnemyBullet(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+export function drawEnemyBullet(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  vx?: number,
+  vy?: number,
+): void {
   const cx = Math.round(x);
   const cy = Math.round(y);
+
+  if (vx != null && vy != null) {
+    const speed = Math.sqrt(vx * vx + vy * vy) || 1;
+    const nx = -vx / speed;
+    const ny = -vy / speed;
+    for (let t = 1; t <= 3; t++) {
+      const alpha = 0.5 - t * 0.12;
+      const s = 3 - t;
+      const px = cx + nx * t * 3;
+      const py = cy + ny * t * 3;
+      g.fillStyle(0xff6644, alpha);
+      g.fillRect(Math.round(px - s / 2), Math.round(py - s / 2), s, s);
+    }
+  }
+
   g.fillStyle(SPACE_COLORS.ENEMY_BULLET, 1);
   g.fillRect(cx - 2, cy - 2, 4, 4);
   g.fillStyle(0xffaa44, 0.7);
@@ -229,10 +250,14 @@ export function drawEnemyBulletExplosion(
   y: number,
   alpha: number,
   color: number = SPACE_COLORS.ENEMY_BULLET,
+  radius: number = 4,
 ): void {
   const cx = Math.round(x);
   const cy = Math.round(y);
-  fillCircle(g, cx, cy, 4, color, alpha * 0.6);
+  fillCircle(g, cx, cy, radius, color, alpha * 0.6);
+  if (radius > 4) {
+    fillCircle(g, cx, cy, Math.round(radius * 0.6), 0xffdd44, alpha * 0.5);
+  }
 }
 
 /** Short-lived explosion effect */
@@ -246,4 +271,40 @@ export function drawExplosion(
 ): void {
   fillCircle(g, Math.round(x), Math.round(y), r, color, alpha);
   fillCircle(g, Math.round(x), Math.round(y), Math.round(r * 0.6), 0xffdd44, alpha * 0.7);
+}
+
+export function drawSatelliteCrash(
+  g: Phaser.GameObjects.Graphics,
+  crash: {
+    worldX: number;
+    worldY: number;
+    angle: number;
+    startDist: number;
+    elapsed: number;
+    duration: number;
+  },
+): void {
+  const t = Math.min(crash.elapsed / crash.duration, 1);
+  const startX = PLANET_CENTER_X + Math.cos(crash.angle) * crash.startDist;
+  const startY = PLANET_CENTER_Y + Math.sin(crash.angle) * crash.startDist;
+
+  const numDebris = 10;
+  for (let i = 0; i < numDebris; i++) {
+    const p = i / (numDebris - 1);
+    const px = startX + (crash.worldX - startX) * p;
+    const py = startY + (crash.worldY - startY) * p;
+    const alpha = (1 - t) * 0.5 + (p > 0.7 ? (1 - p) * 0.7 : 0);
+    if (alpha <= 0) continue;
+    const size = 1 + (1 - p) * 3;
+    g.fillStyle(0xff6600, alpha * 0.7);
+    g.fillRect(Math.round(px - size / 2), Math.round(py - size / 2), size, size);
+    if (i % 2 === 0) {
+      g.fillStyle(0xffcc44, alpha * 0.4);
+      g.fillRect(Math.round(px), Math.round(py), 1, 1);
+    }
+  }
+
+  const coreAlpha = 0.5 + (1 - t) * 0.5;
+  fillCircle(g, Math.round(crash.worldX), Math.round(crash.worldY), 4, 0xffaa44, coreAlpha);
+  fillCircle(g, Math.round(crash.worldX), Math.round(crash.worldY), 2, 0xffffff, coreAlpha * 0.7);
 }

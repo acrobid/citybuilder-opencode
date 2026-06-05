@@ -18,7 +18,12 @@ import { PopulationSystem } from "../systems/PopulationSystem.js";
 import { UIManager } from "../ui/UIManager.js";
 import { WaveSystem } from "../systems/WaveSystem.js";
 import { DefenseSystem } from "../systems/DefenseSystem.js";
-import { drawEnemy, drawEnemyBullet, drawEnemyBulletExplosion } from "../graphics/EnemyGraphics.js";
+import {
+  drawEnemy,
+  drawEnemyBullet,
+  drawEnemyBulletExplosion,
+  drawSatelliteCrash,
+} from "../graphics/EnemyGraphics.js";
 import { drawSatellite } from "../graphics/SatelliteGraphics.js";
 
 export class GameScene extends Phaser.Scene {
@@ -100,10 +105,20 @@ export class GameScene extends Phaser.Scene {
         if (enemy.alive) drawEnemy(this.graphics, enemy);
       }
       for (const b of this.waveSystem.enemyBullets) {
-        if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY);
+        if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY, b.vx, b.vy);
       }
       for (const ex of this.waveSystem.enemyBulletExplosions) {
-        drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200, ex.color ?? 0xff4444);
+        drawEnemyBulletExplosion(
+          this.graphics,
+          ex.x,
+          ex.y,
+          ex.time / 200,
+          ex.color ?? 0xff4444,
+          ex.radius ?? 4,
+        );
+      }
+      for (const crash of this.waveSystem.satelliteCrashes) {
+        drawSatelliteCrash(this.graphics, crash);
       }
       this.defenseSystem.render(this.graphics);
       return;
@@ -145,12 +160,22 @@ export class GameScene extends Phaser.Scene {
 
     // Enemy bullets
     for (const b of this.waveSystem.enemyBullets) {
-      if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY);
+      if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY, b.vx, b.vy);
     }
 
-    // Enemy bullet hit explosions
     for (const ex of this.waveSystem.enemyBulletExplosions) {
-      drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200, ex.color ?? 0xff4444);
+      drawEnemyBulletExplosion(
+        this.graphics,
+        ex.x,
+        ex.y,
+        ex.time / 200,
+        ex.color ?? 0xff4444,
+        ex.radius ?? 4,
+      );
+    }
+
+    for (const crash of this.waveSystem.satelliteCrashes) {
+      drawSatelliteCrash(this.graphics, crash);
     }
 
     this.defenseSystem.render(this.graphics);
