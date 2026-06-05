@@ -13,6 +13,8 @@ export class OrbitalSatellite {
   type: SatelliteType;
   ring: OrbitRing;
   angle: number; // radians, current angular position
+  worldX: number;
+  worldY: number;
   lastFireTime = 0; // scene time of last shot
   alive = true;
   health = 5;
@@ -27,6 +29,11 @@ export class OrbitalSatellite {
   // Shield barrier state (only used for "shield" type)
   barriers: number[] = [];
   barrierRegenTimer = 0;
+  // Black hole state (only used for "gravity" type)
+  blackholeTimer = 0;
+  blackholeCooldownTimer = 0;
+  blackholeWorldX = 0;
+  blackholeWorldY = 0;
 
   get config() {
     return SATELLITE_TYPES[this.type];
@@ -58,17 +65,12 @@ export class OrbitalSatellite {
     return ORBIT_RINGS[this.ring].speed;
   }
 
-  get worldX() {
-    return PLANET_CENTER_X + Math.cos(this.angle) * this.ringRadius;
-  }
-  get worldY() {
-    return PLANET_CENTER_Y + Math.sin(this.angle) * this.ringRadius;
-  }
-
   constructor(type: SatelliteType, ring: OrbitRing, angle: number) {
     this.type = type;
     this.ring = ring;
     this.angle = angle;
+    this.worldX = PLANET_CENTER_X + Math.cos(angle) * this.ringRadius;
+    this.worldY = PLANET_CENTER_Y + Math.sin(angle) * this.ringRadius;
   }
 
   /** Move along orbit */
@@ -77,6 +79,8 @@ export class OrbitalSatellite {
     // Normalize to [0, 2π)
     if (this.angle >= Math.PI * 2) this.angle -= Math.PI * 2;
     if (this.angle < 0) this.angle += Math.PI * 2;
+    this.worldX = PLANET_CENTER_X + Math.cos(this.angle) * this.ringRadius;
+    this.worldY = PLANET_CENTER_Y + Math.sin(this.angle) * this.ringRadius;
   }
 
   /** Angular distance to another satellite (0 to π) */

@@ -23,6 +23,7 @@ import {
   drawShieldWave,
   drawShrapnelProj,
   drawShieldBarrier,
+  drawBlackHoleEffect,
 } from "../graphics/SatelliteGraphics.js";
 import { drawExplosion } from "../graphics/EnemyGraphics.js";
 
@@ -43,6 +44,7 @@ interface Projectile {
   piercedEnemies: Set<Enemy>; // railgun
   chainCount: number; // tesla
   shrapnelLifetime: number; // shrapnel hub
+  ownerSat?: OrbitalSatellite; // gravity black hole
 }
 
 // Shrapnel projectile for shrapnel hub
@@ -166,7 +168,12 @@ export class DefenseSystem {
   }
 
   /** Main update: orbit, synergy, fire, projectiles, specials */
-  update(time: number, delta: number, enemies: Enemy[]): void {
+  update(
+    time: number,
+    delta: number,
+    enemies: Enemy[],
+    enemyBullets?: { worldX: number; worldY: number; alive: boolean }[],
+  ): void {
     this._renderTime = time;
     // Remove dead satellites
     for (let i = this.satellites.length - 1; i >= 0; i--) {
@@ -189,10 +196,10 @@ export class DefenseSystem {
       this._synergyDirty = false;
     }
 
-    // Apply continuous effects (gravity, shield)
+    // Apply continuous effects (black hole, shield)
     for (const sat of this.satellites) {
-      if (sat.config.special === "slow") {
-        this.applyGravitySlow(sat, enemies, delta);
+      if (sat.config.special === "blackhole") {
+        this.updateBlackHole(sat, delta, enemies, enemyBullets);
       }
       if (sat.config.special === "shield") {
         this.updateShieldBarriers(sat, delta);
@@ -435,6 +442,14 @@ export class DefenseSystem {
     const config = SATELLITE_TYPES[p.drawType];
     const color = this.getExplosionColor(p.drawType);
 
+    if (p.drawType === "gravity" && p.ownerSat) {
+      p.ownerSat.blackholeWorldX = p.worldX;
+      p.ownerSat.blackholeWorldY = p.worldY;
+      p.ownerSat.blackholeTimer = (p.ownerSat.config as any).blackholeDuration ?? 4000;
+      p.alive = false;
+      return;
+    }
+
     if (config.special === "pierce" && p.targetEnemy) {
       // Railgun: damage target, explode if killed, continue
       const killed = p.targetEnemy.takeDamage(p.damage);
@@ -624,13 +639,88 @@ export class DefenseSystem {
     }
   }
 
-  private applyGravitySlow(sat: OrbitalSatellite, enemies: Enemy[], _delta: number): void {
+  private updateBlackHole(
+    sat: OrbitalSatellite,
+    delta: number,
+    enemies: Enemy[],
+    enemyBullets?: { worldX: number; worldY: number; alive: boolean }[],
+  ): void {
+    if (sat.blackholeTimer > 0) {
+      sat.blackholeTimer -= delta;
+      this.applyBlackHolePull(sat, enemies, enemyBullets, delta);
+      return;
+    }
+
+    if (sat.blackholeCooldownTimer > 0) {
+      sat.blackholeCooldownTimer -= delta;
+      return;
+    }
+
+    const target = this.findClosestEnemy(sat, enemies);
+    if (!target) return;
+
+    const angle = Math.atan2(target.worldY - sat.worldY, target.worldX - sat.worldX);
+    const cooldown = (sat.config as any).blackholeCooldown ?? 30000;
+    this.projectiles.push({
+      worldX: sat.worldX,
+      worldY: sat.worldY,
+      targetEnemy: target,
+      speed: sat.config.projectileSpeed,
+      damage: 0,
+      alive: true,
+      drawType: "gravity",
+      angle,
+      originX: sat.worldX,
+      originY: sat.worldY,
+      maxDist: sat.range * 1.5,
+      distTraveled: 0,
+      piercedEnemies: new Set(),
+      chainCount: 0,
+      shrapnelLifetime: 0,
+      ownerSat: sat,
+    });
+    sat.blackholeCooldownTimer = cooldown;
+  }
+
+  private applyBlackHolePull(
+    sat: OrbitalSatellite,
+    enemies: Enemy[],
+    enemyBullets: { worldX: number; worldY: number; alive: boolean }[] | undefined,
+    delta: number,
+  ): void {
+    const cx = sat.blackholeWorldX;
+    const cy = sat.blackholeWorldY;
+    const pullRadius = (sat.config as any).blackholePullRadius ?? 200;
+    const pullRadiusSq = pullRadius * pullRadius;
+    const strength = (sat.config as any).blackholePullStrength ?? 100;
+
     for (const e of enemies) {
       if (!e.alive) continue;
-      const dx = e.worldX - sat.worldX;
-      const dy = e.worldY - sat.worldY;
-      if (Math.sqrt(dx * dx + dy * dy) < sat.range) {
-        e.slowTimer = 200; // keep refreshing while in range
+      const dx = cx - e.worldX;
+      const dy = cy - e.worldY;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < pullRadiusSq && distSq > 1) {
+        const dist = Math.sqrt(distSq);
+        const force = strength * (1 - dist / pullRadius) * (delta / 1000);
+        const nx = dx / dist;
+        const ny = dy / dist;
+        e.worldX += nx * force;
+        e.worldY += ny * force;
+      }
+    }
+
+    if (enemyBullets) {
+      for (const b of enemyBullets) {
+        if (!b.alive) continue;
+        const dx = cx - b.worldX;
+        const dy = cy - b.worldY;
+        const distSq = dx * dx + dy * dy;
+        if (distSq < pullRadiusSq && distSq > 1) {
+          const dist = Math.sqrt(distSq);
+          const force = strength * (1 - dist / pullRadius) * (delta / 1000);
+          b.worldX += (dx / dist) * force;
+          b.worldY += (dy / dist) * force;
+        }
       }
     }
   }
@@ -779,6 +869,7 @@ export class DefenseSystem {
     barrierRegenTimer: number;
     ionFireTimer: number;
     ionRechargeTimer: number;
+    blackholeCooldownTimer: number;
   }[] {
     return this.satellites.map((s) => ({
       type: s.type,
@@ -788,6 +879,7 @@ export class DefenseSystem {
       barrierRegenTimer: s.barrierRegenTimer,
       ionFireTimer: s.ionFireTimer,
       ionRechargeTimer: s.ionRechargeTimer,
+      blackholeCooldownTimer: s.blackholeCooldownTimer,
     }));
   }
 
@@ -800,6 +892,7 @@ export class DefenseSystem {
       barrierRegenTimer?: number;
       ionFireTimer?: number;
       ionRechargeTimer?: number;
+      blackholeCooldownTimer?: number;
     }[],
   ): void {
     // Migrate old type names
@@ -816,6 +909,9 @@ export class DefenseSystem {
       if (d.ionFireTimer !== undefined) {
         sat.ionFireTimer = d.ionFireTimer;
         sat.ionRechargeTimer = d.ionRechargeTimer ?? 0;
+      }
+      if (d.blackholeCooldownTimer !== undefined) {
+        sat.blackholeCooldownTimer = d.blackholeCooldownTimer;
       }
       this.satellites.push(sat);
       this.cooldowns.set(sat, 0);
@@ -843,6 +939,20 @@ export class DefenseSystem {
         if (!inView(pos.x, pos.y)) continue;
         drawShieldBarrier(g, pos.x, pos.y, sat.barriers[i], SHIELD_BARRIER.hitCount);
       }
+    }
+
+    // Black hole effects
+    for (const sat of this.satellites) {
+      if (sat.type !== "gravity" || sat.blackholeTimer <= 0) continue;
+      if (!inView(sat.blackholeWorldX, sat.blackholeWorldY)) continue;
+      const pullRadius = (sat.config as any).blackholePullRadius ?? 200;
+      drawBlackHoleEffect(
+        g,
+        sat.blackholeWorldX,
+        sat.blackholeWorldY,
+        pullRadius,
+        this._renderTime,
+      );
     }
 
     // Shrapnel
@@ -912,6 +1022,9 @@ export class DefenseSystem {
           break;
         case "shrapnel":
           drawShrapnelProj(g, p.worldX, p.worldY, p.angle);
+          break;
+        case "gravity":
+          drawBlackHoleEffect(g, p.worldX, p.worldY, 60, this._renderTime);
           break;
         default:
           drawLaserBeam(g, p.worldX, p.worldY);

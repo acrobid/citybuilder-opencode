@@ -392,6 +392,103 @@ export function drawShieldBarrier(
   g.fillRect(cx - 10, cy + 4, 20, 1);
 }
 
+// ── Black Hole Effect ──
+export function drawBlackHoleEffect(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  pullRadius: number,
+  time: number,
+): void {
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  const r = Math.max(8, Math.round(pullRadius * 0.4));
+  const t = time * 0.001;
+
+  // ── Event horizon (solid black center) ──
+  fillCircle(g, cx, cy, Math.round(r * 0.25), 0x000000, 1);
+
+  // ── Photon ring edge (very bright, thin ring right around event horizon) ──
+  const photonR = Math.round(r * 0.32);
+  const photonGlow = 0.6 + 0.25 * Math.sin(t * 0.4);
+  g.lineStyle(4, 0xffffff, photonGlow * 0.3);
+  g.strokeCircle(cx, cy, photonR);
+  g.lineStyle(2, 0xffffff, photonGlow * 0.6);
+  g.strokeCircle(cx, cy, photonR);
+  g.lineStyle(1, 0xffffff, photonGlow);
+  g.strokeCircle(cx, cy, photonR);
+
+  // ── Bright accretion disk ──
+  // Thick overlapping rings from hot inner to cooler outer
+  interface Ring {
+    radius: number; // fraction of r
+    width: number;
+    color: number;
+    alpha: number;
+  }
+  const rings: Ring[] = [
+    { radius: 0.44, width: 5, color: 0xffffff, alpha: 0.55 },
+    { radius: 0.44, width: 4, color: 0xffddaa, alpha: 0.7 },
+    { radius: 0.44, width: 3, color: 0xffcc88, alpha: 0.8 },
+    { radius: 0.44, width: 2, color: 0xffaa44, alpha: 0.9 },
+    { radius: 0.44, width: 1, color: 0xffffff, alpha: 0.6 },
+    { radius: 0.52, width: 6, color: 0xffaa44, alpha: 0.5 },
+    { radius: 0.52, width: 4, color: 0xffcc66, alpha: 0.6 },
+    { radius: 0.52, width: 2, color: 0xffddaa, alpha: 0.45 },
+    { radius: 0.6, width: 7, color: 0xff8833, alpha: 0.4 },
+    { radius: 0.6, width: 5, color: 0xffaa44, alpha: 0.5 },
+    { radius: 0.6, width: 3, color: 0xffcc66, alpha: 0.4 },
+    { radius: 0.7, width: 6, color: 0xee7722, alpha: 0.3 },
+    { radius: 0.7, width: 4, color: 0xff8833, alpha: 0.35 },
+    { radius: 0.81, width: 4, color: 0xdd6622, alpha: 0.2 },
+    { radius: 0.81, width: 2, color: 0xff8833, alpha: 0.25 },
+    { radius: 0.92, width: 3, color: 0x4466bb, alpha: 0.1 },
+  ];
+
+  for (const ring of rings) {
+    const rr = Math.round(r * ring.radius);
+    g.lineStyle(ring.width, ring.color, ring.alpha);
+    g.strokeCircle(cx, cy, rr);
+  }
+
+  // ── Doppler-shifted bright arcs (overlay in 4 clusters) ──
+  const clusterCount = 4;
+  for (let c = 0; c < clusterCount; c++) {
+    const clusterAngle = (c / clusterCount) * Math.PI * 2 + t * 0.25;
+    const doppler = 0.4 + 0.6 * Math.max(0, Math.cos(clusterAngle - t * 0.1));
+    for (let s = 0; s < 3; s++) {
+      const a = clusterAngle - 0.15 + s * 0.08;
+      const len = 0.06 + s * 0.03;
+      g.lineStyle(2, 0xffffff, doppler * (0.5 + s * 0.2));
+      g.beginPath();
+      g.arc(cx, cy, Math.round(r * 0.48), a, a + len, false);
+      g.strokePath();
+    }
+  }
+
+  // ── Orbiting hot spots ──
+  const spots: { speed: number; rFraction: number; color: number; size: number }[] = [
+    { speed: 0.65, rFraction: 0.38, color: 0xffffff, size: 3 },
+    { speed: 0.5, rFraction: 0.5, color: 0xffddaa, size: 4 },
+    { speed: 0.35, rFraction: 0.56, color: 0xffcc88, size: 3 },
+    { speed: 0.22, rFraction: 0.66, color: 0xffaa44, size: 3 },
+    { speed: 0.14, rFraction: 0.76, color: 0xff8833, size: 2 },
+  ];
+  for (const spot of spots) {
+    const ang = t * spot.speed;
+    const sr = r * spot.rFraction;
+    const sx = Math.round(cx + Math.cos(ang) * sr);
+    const sy = Math.round(cy + Math.sin(ang) * sr);
+    const pulse = 0.5 + 0.5 * Math.sin(t * 1.8 + ang);
+    fillCircle(g, sx, sy, spot.size, spot.color, 0.7 + pulse * 0.3);
+    fillCircle(g, sx, sy, Math.round(spot.size * 0.5), 0xffffff, 0.6);
+  }
+
+  // ── Pull radius ──
+  g.lineStyle(1, 0x6688cc, 0.05);
+  g.strokeCircle(cx, cy, Math.max(r, Math.round(pullRadius)));
+}
+
 export function drawShrapnelProj(
   g: Phaser.GameObjects.Graphics,
   x: number,

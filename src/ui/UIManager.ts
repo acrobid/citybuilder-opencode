@@ -35,6 +35,7 @@ export class UIManager {
   private _prevWave = -1;
   private _prevEnemies = -1;
   private _prevFps = -1;
+  private _prevTileInfo = "";
 
   constructor(scene: UIScene) {
     this.scene = scene;
@@ -188,15 +189,16 @@ export class UIManager {
   showTileInfo(tile: Tile | null): void {
     if (!this.tileInfoEl) return;
     if (!tile || tile.zone === "empty") {
-      this.tileInfoEl.textContent = "";
+      if (this._prevTileInfo !== "") {
+        this._prevTileInfo = "";
+        this.tileInfoEl.textContent = "";
+      }
       return;
     }
-    const lines = [
-      `Zone: ${tile.zone}`,
-      `Level: ${tile.level}`,
-      `Powered: ${tile.isPowered ? "Yes" : "No"}`,
-      `Road: ${tile.roadConnected ? "Yes" : "No"}`,
-    ];
-    this.tileInfoEl.textContent = lines.join(" | ");
+    const text = `Zone: ${tile.zone} | Level: ${tile.level} | Powered: ${tile.isPowered ? "Yes" : "No"} | Road: ${tile.roadConnected ? "Yes" : "No"}`;
+    if (text !== this._prevTileInfo) {
+      this._prevTileInfo = text;
+      this.tileInfoEl.textContent = text;
+    }
   }
 }
