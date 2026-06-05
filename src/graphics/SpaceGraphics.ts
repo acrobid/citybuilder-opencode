@@ -6,6 +6,7 @@ import {
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
   PLANET_RADIUS,
+  PLANET_RADIUS_SQ,
   ORBIT_RINGS,
   SPACE_COLORS,
 } from "../config.js";
@@ -113,7 +114,7 @@ export function drawOrbitRings(g: Phaser.GameObjects.Graphics): void {
 export function isOnPlanet(worldX: number, worldY: number): boolean {
   const dx = worldX - PLANET_CENTER_X;
   const dy = worldY - PLANET_CENTER_Y;
-  return Math.sqrt(dx * dx + dy * dy) <= PLANET_RADIUS;
+  return dx * dx + dy * dy <= PLANET_RADIUS_SQ;
 }
 
 /** Check if a tile (by grid col,row) is on the planet surface (uses tile center) */

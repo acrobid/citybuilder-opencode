@@ -23,6 +23,7 @@ export const GAME_HEIGHT = 768;
 export const PLANET_CENTER_X = (MAP_COLS * TILE_SIZE) / 2; // 1024
 export const PLANET_CENTER_Y = (MAP_ROWS * TILE_SIZE) / 2; // 1024
 export const PLANET_RADIUS = 14 * TILE_SIZE; // 448px
+export const PLANET_RADIUS_SQ = PLANET_RADIUS * PLANET_RADIUS;
 
 // ── Orbit Rings ──
 export const ORBIT_RINGS = {
