@@ -150,8 +150,8 @@ export const SYNERGY = {
 
 // ── Enemy Types ──
 export const ENEMY_TYPES = {
-  asteroid: { speed: 30, health: 80, damage: 1, radius: 24, score: 10, spawnDelay: 800 },
-  scout: { speed: 60, health: 40, damage: 1, radius: 20, score: 20, spawnDelay: 400 },
+  asteroid: { speed: 30, health: 80, damage: 1, radius: 24, score: 10, spawnDelay: 200 },
+  scout: { speed: 60, health: 40, damage: 1, radius: 20, score: 20, spawnDelay: 100 },
   mothership: { speed: 15, health: 500, damage: 3, radius: 48, score: 100, spawnDelay: 2000 },
 } as const;
 export type EnemyTypeName = keyof typeof ENEMY_TYPES;

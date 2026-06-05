@@ -57,6 +57,7 @@ export class PowerSystem {
     if (time - this.lastTick >= this.tickInterval) {
       this.lastTick = time;
       this.recalculate(worldMap);
+      worldMap.markDirty();
     }
   }
 }

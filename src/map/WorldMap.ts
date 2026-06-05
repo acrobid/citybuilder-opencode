@@ -22,6 +22,11 @@ export class WorldMap {
   width: number;
   height: number;
   tiles: Tile[][];
+  dirty = true;
+
+  markDirty(): void {
+    this.dirty = true;
+  }
 
   constructor() {
     this.cols = MAP_COLS;
@@ -103,6 +108,7 @@ export class WorldMap {
         }
       }
     }
+    this.dirty = true;
   }
 
   render(graphics: Phaser.GameObjects.Graphics): void {

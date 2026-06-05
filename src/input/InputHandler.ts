@@ -21,6 +21,7 @@ import type { DefenseSystem } from "../systems/DefenseSystem.js";
 interface ToolScene {
   worldMap: WorldMap;
   graphics: Phaser.GameObjects.Graphics;
+  overlayGraphics: Phaser.GameObjects.Graphics;
   economy: EconomySystem;
   uiManager?: UIManager;
   defenseSystem?: DefenseSystem;
@@ -94,6 +95,7 @@ export class InputHandler {
     });
     canvas.addEventListener("mouseleave", () => {
       this.pointerOverCanvas = false;
+      this.scene.overlayGraphics.clear();
     });
   }
 
@@ -119,9 +121,9 @@ export class InputHandler {
           const ringConfig = ORBIT_RINGS[ring as keyof typeof ORBIT_RINGS];
           const wx = PLANET_CENTER_X + Math.cos(angle) * ringConfig.radius;
           const wy = PLANET_CENTER_Y + Math.sin(angle) * ringConfig.radius;
-          this.scene.graphics.fillStyle(0xffffff, 0.3);
-          this.scene.graphics.fillRect(wx - 4, wy - 4, 8, 8);
-          drawRangeCircle(this.scene.graphics, wx, wy, satConfig.range, 0x88ccff);
+          this.scene.overlayGraphics.fillStyle(0xffffff, 0.3);
+          this.scene.overlayGraphics.fillRect(wx - 4, wy - 4, 8, 8);
+          drawRangeCircle(this.scene.overlayGraphics, wx, wy, satConfig.range, 0x88ccff);
         }
       }
     });
@@ -129,7 +131,7 @@ export class InputHandler {
 
   drawPreview(tile: Tile | null): void {
     const { scene } = this;
-    scene.worldMap.render(scene.graphics);
+    scene.overlayGraphics.clear();
 
     if (!tile) return;
     const tool = window.gameState.selectedTool;
@@ -140,11 +142,16 @@ export class InputHandler {
 
     if (tool === "powerplant") {
       const previewColor = valid ? COLORS.PREVIEW_VALID : COLORS.PREVIEW_INVALID;
-      scene.graphics.fillStyle(previewColor, 0.3);
-      scene.graphics.fillRect(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE * 2, TILE_SIZE * 2);
+      scene.overlayGraphics.fillStyle(previewColor, 0.3);
+      scene.overlayGraphics.fillRect(
+        tile.x * TILE_SIZE,
+        tile.y * TILE_SIZE,
+        TILE_SIZE * 2,
+        TILE_SIZE * 2,
+      );
     } else {
-      scene.graphics.fillStyle(color, 0.3);
-      scene.graphics.fillRect(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      scene.overlayGraphics.fillStyle(color, 0.3);
+      scene.overlayGraphics.fillRect(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     }
   }
 
@@ -159,17 +166,14 @@ export class InputHandler {
     if (!tile) return;
 
     if (tool === "bulldoze") {
-      // Try bulldozing a satellite first
       if (
         this.scene.defenseSystem &&
         this.scene.defenseSystem.removeSatellite(worldPoint.x, worldPoint.y)
       ) {
-        this.scene.worldMap.render(this.scene.graphics);
         return;
       }
       this.doBulldoze(tile);
     } else {
-      // Check if it's a satellite tool
       const satType = tool as SatelliteType;
       if (SATELLITE_TYPES[satType as keyof typeof SATELLITE_TYPES]) {
         const ring = nearestOrbitRing(worldPoint.x, worldPoint.y);
@@ -177,7 +181,6 @@ export class InputHandler {
           const angle = angleFromCenter(worldPoint.x, worldPoint.y);
           this.scene.defenseSystem.placeSatellite(satType, angle, ring);
         }
-        this.scene.worldMap.render(this.scene.graphics);
         return;
       }
 
@@ -186,7 +189,6 @@ export class InputHandler {
     }
 
     this.scene.worldMap.recalculateConnectivity();
-    this.scene.worldMap.render(this.scene.graphics);
   }
 
   doPlace(tile: Tile, tool: string): void {

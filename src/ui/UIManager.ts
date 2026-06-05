@@ -5,7 +5,6 @@ import type { WaveSystem } from "../systems/WaveSystem.js";
 
 interface UIScene {
   worldMap: WorldMap;
-  graphics: Phaser.GameObjects.Graphics;
   time: { now: number };
   defenseSystem: DefenseSystem;
   waveSystem: WaveSystem;
@@ -70,8 +69,7 @@ export class UIManager {
         this.scene.worldMap = result.map;
         this.scene.defenseSystem.loadSatellites(result.satellites);
         this.scene.waveSystem.loadState(window.gameState.wave, this.scene.time.now);
-        this.scene.graphics.clear();
-        this.scene.worldMap.render(this.scene.graphics);
+        this.scene.worldMap.markDirty();
       }
     });
 

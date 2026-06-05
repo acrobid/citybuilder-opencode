@@ -23,7 +23,9 @@ import { drawSatellite } from "../graphics/SatelliteGraphics.js";
 
 export class GameScene extends Phaser.Scene {
   worldMap: WorldMap;
+  mapGraphics: Phaser.GameObjects.Graphics;
   graphics: Phaser.GameObjects.Graphics;
+  overlayGraphics: Phaser.GameObjects.Graphics;
   economy: EconomySystem;
   zoneSystem: ZoneSystem;
   powerSystem: PowerSystem;
@@ -40,18 +42,24 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     console.log("GameScene: create");
+    const worldW = MAP_COLS * TILE_SIZE;
+    const worldH = MAP_ROWS * TILE_SIZE;
+
     this.worldMap = new WorldMap();
-    this.graphics = this.add.graphics();
     this.economy = new EconomySystem(window.gameState);
     this.zoneSystem = new ZoneSystem();
     this.powerSystem = new PowerSystem();
     this.populationSystem = new PopulationSystem(window.gameState);
-    this.inputHandler = new InputHandler(this);
-    this.uiManager = new UIManager(this);
     this.waveSystem = new WaveSystem();
     this.defenseSystem = new DefenseSystem();
-    const worldW = MAP_COLS * TILE_SIZE;
-    const worldH = MAP_ROWS * TILE_SIZE;
+
+    this.mapGraphics = this.add.graphics();
+    this.graphics = this.add.graphics();
+    this.overlayGraphics = this.add.graphics();
+
+    this.inputHandler = new InputHandler(this);
+    this.uiManager = new UIManager(this);
+
     const minZoom = 0.15;
     const padX = GAME_WIDTH / minZoom - worldW;
     const padY = GAME_HEIGHT / minZoom - worldH;
@@ -60,10 +68,9 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.centerOn(PLANET_CENTER_X, PLANET_CENTER_Y);
     this.cameras.main.setZoom(1);
 
-    // Starter city: a pre-built tile so the game doesn't immediately end
     const tc = this.worldMap.tiles;
     const cx = 49,
-      cy = 49; // near planet center
+      cy = 49;
     tc[cy][cx].zone = "powerplant";
     tc[cy][cx + 1].zone = "powerplant";
     tc[cy + 1][cx].zone = "powerplant";
@@ -75,13 +82,17 @@ export class GameScene extends Phaser.Scene {
     this.worldMap.recalculateConnectivity();
     window.gameState.population = 50;
 
-    this.worldMap.render(this.graphics);
+    this.worldMap.render(this.mapGraphics);
+    this.worldMap.dirty = false;
   }
 
   update(time: number, delta: number): void {
-    // Skip game logic if game over
     if (this._gameOver) {
-      this.worldMap.render(this.graphics);
+      if (this.worldMap.dirty) {
+        this.worldMap.render(this.mapGraphics);
+        this.worldMap.dirty = false;
+      }
+      this.graphics.clear();
       for (const sat of this.defenseSystem.satellites) {
         drawSatellite(this.graphics, sat);
       }
@@ -101,7 +112,6 @@ export class GameScene extends Phaser.Scene {
     this.defenseSystem.update(time, delta, this.waveSystem.enemies);
     this.uiManager.update();
 
-    // Game over check
     if (
       !this._gameOver &&
       window.gameState.population <= 0 &&
@@ -112,8 +122,12 @@ export class GameScene extends Phaser.Scene {
       this.uiManager.showGameOver(this.waveSystem.getWaveNumber());
     }
 
-    // Render order: world -> satellites -> enemies -> projectiles
-    this.worldMap.render(this.graphics);
+    if (this.worldMap.dirty) {
+      this.worldMap.render(this.mapGraphics);
+      this.worldMap.dirty = false;
+    }
+
+    this.graphics.clear();
 
     for (const sat of this.defenseSystem.satellites) {
       drawSatellite(this.graphics, sat);

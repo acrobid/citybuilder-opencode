@@ -6,6 +6,7 @@ export class ZoneSystem {
   growthChance = 0.15;
 
   tick(worldMap: WorldMap): void {
+    let changed = false;
     for (let y = 0; y < worldMap.rows; y++) {
       for (let x = 0; x < worldMap.cols; x++) {
         const tile = worldMap.tiles[y][x];
@@ -16,9 +17,11 @@ export class ZoneSystem {
 
         if (Math.random() < this.growthChance) {
           tile.level++;
+          changed = true;
         }
       }
     }
+    if (changed) worldMap.markDirty();
   }
 
   isZoneType(zone: string): boolean {

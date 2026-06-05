@@ -183,17 +183,22 @@ export class WaveSystem {
         : 0;
     const hasMothership = this.waveNumber % WAVE_CONFIG.mothershipEvery === 0;
 
-    // Build queue
+    // Build queue (batch enemies in groups)
     this.spawnQueue = [];
     let delay = 0;
+    const groupSize = 5;
 
     for (let i = 0; i < aCount; i++) {
       this.spawnQueue.push({ type: "asteroid", delay });
-      delay += ENEMY_TYPES.asteroid.spawnDelay + Math.random() * 700;
+      if ((i + 1) % groupSize === 0) {
+        delay += ENEMY_TYPES.asteroid.spawnDelay + Math.random() * 300;
+      }
     }
     for (let i = 0; i < sCount; i++) {
       this.spawnQueue.push({ type: "scout", delay });
-      delay += ENEMY_TYPES.scout.spawnDelay + Math.random() * 500;
+      if ((i + 1) % groupSize === 0) {
+        delay += ENEMY_TYPES.scout.spawnDelay + Math.random() * 200;
+      }
     }
     if (hasMothership) {
       this.spawnQueue.push({ type: "mothership", delay });
@@ -234,7 +239,31 @@ export class WaveSystem {
   }
 
   forceStartWave(time: number): void {
-    this.startNextWave(time);
+    if (this.waveActive) {
+      const aCount = WAVE_CONFIG.baseEnemies;
+      const sCount = this.waveNumber >= WAVE_CONFIG.scoutsStartWave ? WAVE_CONFIG.scoutsPerWave : 0;
+
+      let delay =
+        this.spawnQueue.length > 0
+          ? this.spawnQueue[this.spawnQueue.length - 1].delay
+          : time - this.waveStartTime;
+
+      const groupSize = 10;
+      for (let i = 0; i < aCount; i++) {
+        this.spawnQueue.push({ type: "asteroid", delay });
+        if ((i + 1) % groupSize === 0) {
+          delay += ENEMY_TYPES.asteroid.spawnDelay + Math.random() * 200;
+        }
+      }
+      for (let i = 0; i < sCount; i++) {
+        this.spawnQueue.push({ type: "scout", delay });
+        if ((i + 1) % groupSize === 0) {
+          delay += ENEMY_TYPES.scout.spawnDelay + Math.random() * 150;
+        }
+      }
+    } else {
+      this.startNextWave(time);
+    }
   }
 
   loadState(waveNumber: number, time: number): void {
