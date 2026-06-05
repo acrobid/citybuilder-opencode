@@ -17,6 +17,7 @@ export class Enemy {
   // Special effects (applied by DefenseSystem)
   slowTimer = 0; // >0 = slowed (remaining ms)
   stunTimer = 0; // >0 = stunned (remaining ms)
+  shootTimer = 0; // cooldown until next shot
 
   constructor(
     type: EnemyTypeName,

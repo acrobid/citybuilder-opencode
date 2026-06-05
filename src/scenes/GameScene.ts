@@ -18,7 +18,7 @@ import { PopulationSystem } from "../systems/PopulationSystem.js";
 import { UIManager } from "../ui/UIManager.js";
 import { WaveSystem } from "../systems/WaveSystem.js";
 import { DefenseSystem } from "../systems/DefenseSystem.js";
-import { drawEnemy } from "../graphics/EnemyGraphics.js";
+import { drawEnemy, drawEnemyBullet, drawEnemyBulletExplosion } from "../graphics/EnemyGraphics.js";
 import { drawSatellite } from "../graphics/SatelliteGraphics.js";
 
 export class GameScene extends Phaser.Scene {
@@ -99,6 +99,12 @@ export class GameScene extends Phaser.Scene {
       for (const enemy of this.waveSystem.enemies) {
         if (enemy.alive) drawEnemy(this.graphics, enemy);
       }
+      for (const b of this.waveSystem.enemyBullets) {
+        if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY);
+      }
+      for (const ex of this.waveSystem.enemyBulletExplosions) {
+        drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200);
+      }
       this.defenseSystem.render(this.graphics);
       return;
     }
@@ -108,7 +114,7 @@ export class GameScene extends Phaser.Scene {
     this.powerSystem.update(time, this.worldMap);
     this.zoneSystem.update(time, this.worldMap);
     this.populationSystem.update(time, this.worldMap);
-    this.waveSystem.update(time, delta, this.worldMap);
+    this.waveSystem.update(time, delta, this.worldMap, this.defenseSystem.satellites);
     this.defenseSystem.update(time, delta, this.waveSystem.enemies);
     this.uiManager.update();
 
@@ -135,6 +141,16 @@ export class GameScene extends Phaser.Scene {
 
     for (const enemy of this.waveSystem.enemies) {
       if (enemy.alive) drawEnemy(this.graphics, enemy);
+    }
+
+    // Enemy bullets
+    for (const b of this.waveSystem.enemyBullets) {
+      if (b.alive) drawEnemyBullet(this.graphics, b.worldX, b.worldY);
+    }
+
+    // Enemy bullet hit explosions
+    for (const ex of this.waveSystem.enemyBulletExplosions) {
+      drawEnemyBulletExplosion(this.graphics, ex.x, ex.y, ex.time / 200);
     }
 
     this.defenseSystem.render(this.graphics);

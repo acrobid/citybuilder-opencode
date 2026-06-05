@@ -85,6 +85,26 @@ export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   }
 }
 
+export function drawEnemyBullet(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  g.fillStyle(SPACE_COLORS.ENEMY_BULLET, 1);
+  g.fillRect(cx - 2, cy - 2, 4, 4);
+  g.fillStyle(0xffaa44, 0.7);
+  g.fillRect(cx - 1, cy - 1, 2, 2);
+}
+
+export function drawEnemyBulletExplosion(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  alpha: number,
+): void {
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  fillCircle(g, cx, cy, 4, SPACE_COLORS.ENEMY_BULLET, alpha * 0.6);
+}
+
 /** Short-lived explosion effect */
 export function drawExplosion(
   g: Phaser.GameObjects.Graphics,

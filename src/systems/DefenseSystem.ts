@@ -143,6 +143,14 @@ export class DefenseSystem {
 
   /** Main update: orbit, synergy, fire, projectiles, specials */
   update(time: number, delta: number, enemies: Enemy[]): void {
+    // Remove dead satellites
+    for (let i = this.satellites.length - 1; i >= 0; i--) {
+      if (!this.satellites[i].alive) {
+        this.cooldowns.delete(this.satellites[i]);
+        this.satellites.splice(i, 1);
+      }
+    }
+
     // Orbit all satellites
     for (const sat of this.satellites) {
       sat.orbit(delta);

@@ -14,6 +14,8 @@ export class OrbitalSatellite {
   angle: number; // radians, current angular position
   lastFireTime = 0; // scene time of last shot
   alive = true;
+  health = 5;
+  maxHealth = 5;
   // Synergy bonuses (recalculated each frame)
   hasTwinSynergy = false;
   hasTrinitySynergy = false;

@@ -189,4 +189,5 @@ export const SPACE_COLORS = {
   SHIELD_ARC: 0x88ccff,
   DRONE_BODY: 0xffaa00,
   EXPLOSION: 0xffaa00,
+  ENEMY_BULLET: 0xff4444,
 } as const;

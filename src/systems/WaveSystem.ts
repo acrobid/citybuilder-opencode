@@ -1,6 +1,7 @@
 import { Enemy, EnemyTypeName } from "../entities/Enemy.js";
 import { ENEMY_TYPES, WAVE_CONFIG, PLANET_CENTER_X, PLANET_CENTER_Y } from "../config.js";
 import type { WorldMap } from "../map/WorldMap.js";
+import type { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
 
 function randomSpawnPos(): { x: number; y: number } {
   const angle = Math.random() * Math.PI * 2;
@@ -16,8 +17,19 @@ interface QueuedSpawn {
   delay: number; // ms from wave start
 }
 
+interface EnemyBullet {
+  worldX: number;
+  worldY: number;
+  vx: number;
+  vy: number;
+  damage: number;
+  alive: boolean;
+}
+
 export class WaveSystem {
   enemies: Enemy[] = [];
+  enemyBullets: EnemyBullet[] = [];
+  enemyBulletExplosions: { x: number; y: number; time: number }[] = [];
   private waveNumber = 0;
   private waveActive = false;
   private inBuildPhase = true;
@@ -28,7 +40,7 @@ export class WaveSystem {
   private spawnIndex = 0;
   private waveClearReward = 0;
 
-  update(time: number, delta: number, worldMap: WorldMap): void {
+  update(time: number, delta: number, worldMap: WorldMap, satellites: OrbitalSatellite[]): void {
     // Initialize on first frame
     if (!this.gameStarted) {
       this.gameStarted = true;
@@ -46,7 +58,8 @@ export class WaveSystem {
         this.startNextWave(time);
       }
       // Update enemies (mothership-scout spawned enemies may still exist)
-      this.updateEnemies(delta, worldMap);
+      this.updateEnemies(delta, worldMap, satellites);
+      this.updateEnemyBullets(delta, satellites);
       window.gameState.enemiesRemaining =
         this.enemies.length + (this.spawnQueue.length - this.spawnIndex);
       return;
@@ -65,7 +78,8 @@ export class WaveSystem {
     }
 
     // Update all enemies
-    this.updateEnemies(delta, worldMap);
+    this.updateEnemies(delta, worldMap, satellites);
+    this.updateEnemyBullets(delta, satellites);
 
     // Check wave complete
     if (this.spawnIndex >= this.spawnQueue.length && this.enemies.length === 0 && this.waveActive) {
@@ -76,7 +90,7 @@ export class WaveSystem {
       this.enemies.length + (this.spawnQueue.length - this.spawnIndex);
   }
 
-  private updateEnemies(delta: number, worldMap: WorldMap): void {
+  private updateEnemies(delta: number, worldMap: WorldMap, satellites: OrbitalSatellite[]): void {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
       if (!enemy.alive) {
@@ -100,7 +114,101 @@ export class WaveSystem {
         enemy.hasSpawnedScouts = true;
         this.spawnScoutsFrom(enemy.worldX, enemy.worldY, 3);
       }
+
+      // Aliens shoot at satellites
+      if (enemy.type !== "asteroid" && satellites.length > 0) {
+        enemy.shootTimer -= delta;
+        if (enemy.shootTimer <= 0) {
+          const cooldown = enemy.type === "mothership" ? 800 : 2000;
+          enemy.shootTimer = cooldown;
+          const sat = this.findNearestSatellite(enemy, satellites);
+          if (sat) {
+            const dx = sat.worldX - enemy.worldX;
+            const dy = sat.worldY - enemy.worldY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0) {
+              const speed = 200;
+              const damage = enemy.type === "mothership" ? 2 : 1;
+              this.enemyBullets.push({
+                worldX: enemy.worldX,
+                worldY: enemy.worldY,
+                vx: (dx / dist) * speed,
+                vy: (dy / dist) * speed,
+                damage,
+                alive: true,
+              });
+            }
+          }
+        }
+      }
     }
+  }
+
+  private updateEnemyBullets(delta: number, satellites: OrbitalSatellite[]): void {
+    for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
+      const b = this.enemyBullets[i];
+      if (!b.alive) {
+        this.enemyBullets.splice(i, 1);
+        continue;
+      }
+
+      const move = (Math.sqrt(b.vx * b.vx + b.vy * b.vy) * delta) / 1000;
+      const nx = b.vx != 0 ? b.vx / Math.sqrt(b.vx * b.vx + b.vy * b.vy) : 0;
+      const ny = b.vy != 0 ? b.vy / Math.sqrt(b.vx * b.vx + b.vy * b.vy) : 0;
+      b.worldX += nx * move;
+      b.worldY += ny * move;
+
+      // Check collision with satellites
+      for (const sat of satellites) {
+        if (!sat.alive) continue;
+        const dx = b.worldX - sat.worldX;
+        const dy = b.worldY - sat.worldY;
+        if (Math.sqrt(dx * dx + dy * dy) < 12) {
+          sat.health -= b.damage;
+          b.alive = false;
+          this.enemyBulletExplosions.push({ x: b.worldX, y: b.worldY, time: 200 });
+          if (sat.health <= 0) {
+            sat.alive = false;
+            this.enemyBulletExplosions.push({ x: sat.worldX, y: sat.worldY, time: 400 });
+          }
+          break;
+        }
+      }
+
+      // Remove if too far from planet (out of bounds)
+      const dx2 = b.worldX - PLANET_CENTER_X;
+      const dy2 = b.worldY - PLANET_CENTER_Y;
+      if (Math.sqrt(dx2 * dx2 + dy2 * dy2) > 3000) {
+        b.alive = false;
+      }
+    }
+
+    // Update explosions
+    for (let i = this.enemyBulletExplosions.length - 1; i >= 0; i--) {
+      this.enemyBulletExplosions[i].time -= delta;
+      if (this.enemyBulletExplosions[i].time <= 0) {
+        this.enemyBulletExplosions.splice(i, 1);
+      }
+    }
+  }
+
+  private findNearestSatellite(
+    enemy: Enemy,
+    satellites: OrbitalSatellite[],
+  ): OrbitalSatellite | null {
+    let best: OrbitalSatellite | null = null;
+    let bestDist = 600;
+    for (const sat of satellites) {
+      if (!sat.alive) continue;
+      const dx = sat.worldX - enemy.worldX;
+      const dy = sat.worldY - enemy.worldY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = sat;
+      }
+    }
+    return best;
   }
 
   private spawnEnemy(type: EnemyTypeName): void {
@@ -213,6 +321,8 @@ export class WaveSystem {
     window.gameState.waveActive = false;
     window.gameState.enemiesRemaining = 0;
     this.enemies = [];
+    this.enemyBullets = [];
+    this.enemyBulletExplosions = [];
     this.spawnQueue = [];
     this.spawnIndex = 0;
 
@@ -275,6 +385,8 @@ export class WaveSystem {
     this.spawnIndex = 0;
     this.gameStarted = true;
     this.enemies = [];
+    this.enemyBullets = [];
+    this.enemyBulletExplosions = [];
     window.gameState.wave = waveNumber;
     window.gameState.waveActive = false;
     window.gameState.enemiesRemaining = 0;
