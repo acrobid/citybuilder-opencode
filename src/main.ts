@@ -23,4 +23,8 @@ new Phaser.Game({
   parent: "game-container",
   backgroundColor: "#1a1a2e",
   scene: [BootScene, GameScene],
+  banner: false,
+  render: {
+    batchSize: 4096,
+  },
 });
