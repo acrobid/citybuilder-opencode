@@ -62,6 +62,8 @@ export class DefenseSystem {
   projectiles: Projectile[] = [];
   drones: Drone[] = [];
   private cooldowns: Map<OrbitalSatellite, number> = new Map();
+  private _lastSynergyTime = 0;
+  private _synergyDirty = true;
   // Explosion effects (position, radius, remaining time)
   explosions: { x: number; y: number; r: number; time: number; color: number }[] = [];
   particles: Particle[] = [];
@@ -75,6 +77,7 @@ export class DefenseSystem {
     const sat = new OrbitalSatellite(type, ring, angle);
     this.satellites.push(sat);
     this.cooldowns.set(sat, 0);
+    this._synergyDirty = true;
 
     if (type === "shield") {
       sat.barriers = Array.from({ length: SHIELD_BARRIER.count }, () => SHIELD_BARRIER.hitCount);
@@ -104,6 +107,7 @@ export class DefenseSystem {
       window.gameState.money += refund;
       this.satellites = this.satellites.filter((s) => s !== closest);
       this.cooldowns.delete(closest);
+      this._synergyDirty = true;
       return true;
     }
     return false;
@@ -163,8 +167,12 @@ export class DefenseSystem {
       sat.orbit(delta);
     }
 
-    // Calculate synergy
-    this.calculateSynergy();
+    // Calculate synergy (throttled to 500ms or when dirty)
+    if (this._synergyDirty || time - this._lastSynergyTime >= 500) {
+      this.calculateSynergy();
+      this._lastSynergyTime = time;
+      this._synergyDirty = false;
+    }
 
     // Apply continuous effects (gravity, shield)
     for (const sat of this.satellites) {
@@ -646,9 +654,8 @@ export class DefenseSystem {
       this.satellites.push(sat);
       this.cooldowns.set(sat, 0);
     }
+    this._synergyDirty = true;
   }
-
-  // ── Rendering ──
 
   render(g: Phaser.GameObjects.Graphics): void {
     // Shield barriers
