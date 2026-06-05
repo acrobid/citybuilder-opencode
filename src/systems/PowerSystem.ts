@@ -34,9 +34,10 @@ export class PowerSystem {
     }
     const queue: QueueItem[] = [{ x: startX, y: startY, dist: 0 }];
     const visited = new Set<string>();
+    let head = 0;
 
-    while (queue.length > 0) {
-      const { x, y, dist } = queue.shift()!;
+    while (head < queue.length) {
+      const { x, y, dist } = queue[head++];
       const key = `${x},${y}`;
 
       if (visited.has(key)) continue;
