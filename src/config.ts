@@ -157,7 +157,7 @@ export const SYNERGY = {
 export const ENEMY_TYPES = {
   asteroid: { speed: 30, health: 80, damage: 1, radius: 24, score: 10, spawnDelay: 200 },
   scout: { speed: 60, health: 40, damage: 1, radius: 20, score: 20, spawnDelay: 100 },
-  mothership: { speed: 28, health: 800, damage: 4, radius: 64, score: 150, spawnDelay: 2000 },
+  mothership: { speed: 42, health: 800, damage: 4, radius: 64, score: 150, spawnDelay: 2000 },
 } as const;
 export type EnemyTypeName = keyof typeof ENEMY_TYPES;
 
@@ -179,7 +179,6 @@ export const WAVE_CONFIG = {
   enemiesPerWave: 20,
   scoutsStartWave: 2,
   scoutsPerWave: 20,
-  mothershipEvery: 1,
   waveReward: 2000,
   waveRewardPerWave: 500,
 } as const;

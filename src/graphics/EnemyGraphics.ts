@@ -182,54 +182,72 @@ function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   drawHealthBar(g, enemy);
 }
 
+function drawOctagon(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  radius: number,
+  fillColor: number,
+  fillAlpha: number,
+  strokeColor: number,
+  strokeAlpha: number,
+): void {
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const squeeze = i % 2 === 0 ? 1 : 0.82;
+    _hullVerts[i].x = cx + Math.cos(angle) * radius * squeeze;
+    _hullVerts[i].y = cy + Math.sin(angle) * radius * squeeze;
+  }
+  g.fillStyle(fillColor, fillAlpha);
+  g.fillPoints(_hullVerts, true);
+  g.lineStyle(1, strokeColor, strokeAlpha);
+  g.strokePoints(_hullVerts, true);
+}
+
 function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: number): void {
   const cx = Math.round(enemy.worldX);
   const cy = Math.round(enemy.worldY);
   const r = enemy.radius;
-
   const t = time;
 
-  // Outer hull — hexagonal/saucer shape
-  const hullSegments = 8;
-  for (let i = 0; i < hullSegments; i++) {
-    const angle = (i / hullSegments) * Math.PI * 2;
-    const squeeze = i % 2 === 0 ? 1 : 0.82;
-    _hullVerts[i].x = cx + Math.cos(angle) * r * squeeze;
-    _hullVerts[i].y = cy + Math.sin(angle) * r * squeeze;
-  }
-  g.fillStyle(0x661133, 1);
-  g.fillPoints(_hullVerts, true);
-  g.lineStyle(1, 0xaa2255, 0.6);
-  g.strokePoints(_hullVerts, true);
+  // Outer hull — large saucer base
+  drawOctagon(g, cx, cy, r, 0x4a0d22, 1, 0x882244, 0.5);
 
-  // Mid ring
-  fillCircle(g, cx, cy, r - 6, 0x881144, 0.9);
-  fillCircle(g, cx, cy, r - 10, 0xcc2255, 0.8);
+  // Second deck ring
+  drawOctagon(g, cx, cy, r - 8, 0x661133, 1, 0xaa3366, 0.5);
+
+  // Third deck ring
+  drawOctagon(g, cx, cy, r - 16, 0x881f55, 0.95, 0xcc4477, 0.4);
+
+  // Fourth deck — innermost
+  drawOctagon(g, cx, cy, r - 24, 0xaa3377, 0.85, 0xdd6699, 0.3);
 
   // Energy core
   const corePulse = 0.7 + 0.3 * Math.sin(t / 400);
-  fillCircle(g, cx, cy, r - 16, 0xff4477, corePulse);
-  fillCircle(g, cx, cy, Math.round((r - 20) * corePulse), 0xff88aa, corePulse * 0.9);
+  fillCircle(g, cx, cy, r - 30, 0xff4477, corePulse);
+  fillCircle(g, cx, cy, Math.round((r - 34) * corePulse), 0xff88aa, corePulse * 0.9);
 
   // Spinning inner detail
   const spinAngle = t / 800;
-  for (let i = 0; i < 4; i++) {
-    const a = spinAngle + (i / 4) * Math.PI * 2;
-    const sx = cx + Math.cos(a) * (r - 24);
-    const sy = cy + Math.sin(a) * (r - 24);
+  for (let i = 0; i < 5; i++) {
+    const a = spinAngle + (i / 5) * Math.PI * 2;
+    const sx = cx + Math.cos(a) * (r - 36);
+    const sy = cy + Math.sin(a) * (r - 36);
     fillCircle(g, Math.round(sx), Math.round(sy), 3, 0xffaacc, 0.7);
   }
 
-  // Hull plating lines radiating from center
-  g.lineStyle(1, 0x440022, 0.4);
+  // Deck connector lines (spokes between decks)
+  g.lineStyle(1, 0x440022, 0.25);
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    g.lineBetween(
-      Math.round(cx + Math.cos(a) * (r - 20)),
-      Math.round(cy + Math.sin(a) * (r - 20)),
-      Math.round(cx + Math.cos(a) * r),
-      Math.round(cy + Math.sin(a) * r),
-    );
+    for (let dr = r - 24; dr <= r; dr += 8) {
+      g.lineBetween(
+        Math.round(cx + Math.cos(a) * (dr - 8)),
+        Math.round(cy + Math.sin(a) * (dr - 8)),
+        Math.round(cx + Math.cos(a) * dr),
+        Math.round(cy + Math.sin(a) * dr),
+      );
+    }
   }
 
   // Weapon ports around the rim
@@ -238,7 +256,7 @@ function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: numb
     const px = cx + Math.cos(a) * (r - 2);
     const py = cy + Math.sin(a) * (r - 2);
     g.fillStyle(0xff2244, 0.6 + 0.4 * Math.sin(t / 300 + i));
-    g.fillRect(Math.round(px) - 2, Math.round(py) - 2, 4, 4);
+    g.fillRect(Math.round(px) - 3, Math.round(py) - 2, 6, 4);
   }
 
   // Outer pulsing aura

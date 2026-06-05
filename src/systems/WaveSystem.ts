@@ -513,7 +513,7 @@ export class WaveSystem {
       this.waveNumber >= WAVE_CONFIG.scoutsStartWave
         ? (this.waveNumber - WAVE_CONFIG.scoutsStartWave + 1) * WAVE_CONFIG.scoutsPerWave
         : 0;
-    const hasMothership = this.waveNumber % WAVE_CONFIG.mothershipEvery === 0;
+    const mothershipCount = this.waveNumber;
 
     // Build queue (batch enemies in groups)
     this.spawnQueue = [];
@@ -532,8 +532,9 @@ export class WaveSystem {
         delay += ENEMY_TYPES.scout.spawnDelay + Math.random() * 200;
       }
     }
-    if (hasMothership) {
+    for (let i = 0; i < mothershipCount; i++) {
       this.spawnQueue.push({ type: "mothership", delay });
+      delay += ENEMY_TYPES.mothership.spawnDelay;
     }
 
     this.spawnIndex = 0;
