@@ -393,6 +393,33 @@ export function drawShieldBarrier(
 }
 
 // ── Black Hole Effect ──
+const RING_DEFS = [
+  { radius: 0.44, width: 5, color: 0xffffff, alpha: 0.55 },
+  { radius: 0.44, width: 4, color: 0xffddaa, alpha: 0.7 },
+  { radius: 0.44, width: 3, color: 0xffcc88, alpha: 0.8 },
+  { radius: 0.44, width: 2, color: 0xffaa44, alpha: 0.9 },
+  { radius: 0.44, width: 1, color: 0xffffff, alpha: 0.6 },
+  { radius: 0.52, width: 6, color: 0xffaa44, alpha: 0.5 },
+  { radius: 0.52, width: 4, color: 0xffcc66, alpha: 0.6 },
+  { radius: 0.52, width: 2, color: 0xffddaa, alpha: 0.45 },
+  { radius: 0.6, width: 7, color: 0xff8833, alpha: 0.4 },
+  { radius: 0.6, width: 5, color: 0xffaa44, alpha: 0.5 },
+  { radius: 0.6, width: 3, color: 0xffcc66, alpha: 0.4 },
+  { radius: 0.7, width: 6, color: 0xee7722, alpha: 0.3 },
+  { radius: 0.7, width: 4, color: 0xff8833, alpha: 0.35 },
+  { radius: 0.81, width: 4, color: 0xdd6622, alpha: 0.2 },
+  { radius: 0.81, width: 2, color: 0xff8833, alpha: 0.25 },
+  { radius: 0.92, width: 3, color: 0x4466bb, alpha: 0.1 },
+];
+
+const SPOT_DEFS = [
+  { speed: 0.65, rFraction: 0.38, color: 0xffffff, size: 3 },
+  { speed: 0.5, rFraction: 0.5, color: 0xffddaa, size: 4 },
+  { speed: 0.35, rFraction: 0.56, color: 0xffcc88, size: 3 },
+  { speed: 0.22, rFraction: 0.66, color: 0xffaa44, size: 3 },
+  { speed: 0.14, rFraction: 0.76, color: 0xff8833, size: 2 },
+];
+
 export function drawBlackHoleEffect(
   g: Phaser.GameObjects.Graphics,
   x: number,
@@ -420,32 +447,7 @@ export function drawBlackHoleEffect(
 
   // ── Bright accretion disk ──
   // Thick overlapping rings from hot inner to cooler outer
-  interface Ring {
-    radius: number; // fraction of r
-    width: number;
-    color: number;
-    alpha: number;
-  }
-  const rings: Ring[] = [
-    { radius: 0.44, width: 5, color: 0xffffff, alpha: 0.55 },
-    { radius: 0.44, width: 4, color: 0xffddaa, alpha: 0.7 },
-    { radius: 0.44, width: 3, color: 0xffcc88, alpha: 0.8 },
-    { radius: 0.44, width: 2, color: 0xffaa44, alpha: 0.9 },
-    { radius: 0.44, width: 1, color: 0xffffff, alpha: 0.6 },
-    { radius: 0.52, width: 6, color: 0xffaa44, alpha: 0.5 },
-    { radius: 0.52, width: 4, color: 0xffcc66, alpha: 0.6 },
-    { radius: 0.52, width: 2, color: 0xffddaa, alpha: 0.45 },
-    { radius: 0.6, width: 7, color: 0xff8833, alpha: 0.4 },
-    { radius: 0.6, width: 5, color: 0xffaa44, alpha: 0.5 },
-    { radius: 0.6, width: 3, color: 0xffcc66, alpha: 0.4 },
-    { radius: 0.7, width: 6, color: 0xee7722, alpha: 0.3 },
-    { radius: 0.7, width: 4, color: 0xff8833, alpha: 0.35 },
-    { radius: 0.81, width: 4, color: 0xdd6622, alpha: 0.2 },
-    { radius: 0.81, width: 2, color: 0xff8833, alpha: 0.25 },
-    { radius: 0.92, width: 3, color: 0x4466bb, alpha: 0.1 },
-  ];
-
-  for (const ring of rings) {
+  for (const ring of RING_DEFS) {
     const rr = Math.round(r * ring.radius);
     g.lineStyle(ring.width, ring.color, ring.alpha);
     g.strokeCircle(cx, cy, rr);
@@ -467,14 +469,7 @@ export function drawBlackHoleEffect(
   }
 
   // ── Orbiting hot spots ──
-  const spots: { speed: number; rFraction: number; color: number; size: number }[] = [
-    { speed: 0.65, rFraction: 0.38, color: 0xffffff, size: 3 },
-    { speed: 0.5, rFraction: 0.5, color: 0xffddaa, size: 4 },
-    { speed: 0.35, rFraction: 0.56, color: 0xffcc88, size: 3 },
-    { speed: 0.22, rFraction: 0.66, color: 0xffaa44, size: 3 },
-    { speed: 0.14, rFraction: 0.76, color: 0xff8833, size: 2 },
-  ];
-  for (const spot of spots) {
+  for (const spot of SPOT_DEFS) {
     const ang = t * spot.speed;
     const sr = r * spot.rFraction;
     const sx = Math.round(cx + Math.cos(ang) * sr);
