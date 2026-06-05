@@ -158,7 +158,8 @@ export class DefenseSystem {
     for (let i = this.satellites.length - 1; i >= 0; i--) {
       if (!this.satellites[i].alive) {
         this.cooldowns.delete(this.satellites[i]);
-        this.satellites.splice(i, 1);
+        this.satellites[i] = this.satellites[this.satellites.length - 1];
+        this.satellites.pop();
       }
     }
 
@@ -232,7 +233,8 @@ export class DefenseSystem {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
       if (!p.alive) {
-        this.projectiles.splice(i, 1);
+        this.projectiles[i] = this.projectiles[this.projectiles.length - 1];
+        this.projectiles.pop();
         continue;
       }
 
@@ -283,7 +285,8 @@ export class DefenseSystem {
     for (let i = this.explosions.length - 1; i >= 0; i--) {
       this.explosions[i].time -= delta;
       if (this.explosions[i].time <= 0) {
-        this.explosions.splice(i, 1);
+        this.explosions[i] = this.explosions[this.explosions.length - 1];
+        this.explosions.pop();
       }
     }
 
@@ -292,7 +295,8 @@ export class DefenseSystem {
       const pt = this.particles[i];
       pt.life -= delta;
       if (pt.life <= 0) {
-        this.particles.splice(i, 1);
+        this.particles[i] = this.particles[this.particles.length - 1];
+        this.particles.pop();
         continue;
       }
       pt.x += pt.vx * (delta / 1000);
@@ -543,7 +547,8 @@ export class DefenseSystem {
       const d = this.drones[i];
       d.lifetime -= delta;
       if (d.lifetime <= 0) {
-        this.drones.splice(i, 1);
+        this.drones[i] = this.drones[this.drones.length - 1];
+        this.drones.pop();
         continue;
       }
 
@@ -552,7 +557,8 @@ export class DefenseSystem {
         d.targetEnemy = this.findClosestEnemyAt(d.worldX, d.worldY, 300, enemies, new Set());
       }
       if (!d.targetEnemy) {
-        this.drones.splice(i, 1);
+        this.drones[i] = this.drones[this.drones.length - 1];
+        this.drones.pop();
         continue;
       }
 
@@ -571,7 +577,8 @@ export class DefenseSystem {
             0xffaa00,
           );
         }
-        this.drones.splice(i, 1);
+        this.drones[i] = this.drones[this.drones.length - 1];
+        this.drones.pop();
         continue;
       }
       const move = (d.speed * delta) / 1000;

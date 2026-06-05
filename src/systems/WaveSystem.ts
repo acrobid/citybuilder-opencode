@@ -115,14 +115,16 @@ export class WaveSystem {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
       if (!enemy.alive) {
-        this.enemies.splice(i, 1);
+        this.enemies[i] = this.enemies[this.enemies.length - 1];
+        this.enemies.pop();
         continue;
       }
 
       const hitSurface = enemy.update(delta);
       if (hitSurface) {
         this.doImpact(enemy, worldMap);
-        this.enemies.splice(i, 1);
+        this.enemies[i] = this.enemies[this.enemies.length - 1];
+        this.enemies.pop();
         continue;
       }
 
@@ -169,7 +171,8 @@ export class WaveSystem {
     for (let i = this.enemyBullets.length - 1; i >= 0; i--) {
       const b = this.enemyBullets[i];
       if (!b.alive) {
-        this.enemyBullets.splice(i, 1);
+        this.enemyBullets[i] = this.enemyBullets[this.enemyBullets.length - 1];
+        this.enemyBullets.pop();
         continue;
       }
 
@@ -257,7 +260,9 @@ export class WaveSystem {
     for (let i = this.enemyBulletExplosions.length - 1; i >= 0; i--) {
       this.enemyBulletExplosions[i].time -= delta;
       if (this.enemyBulletExplosions[i].time <= 0) {
-        this.enemyBulletExplosions.splice(i, 1);
+        this.enemyBulletExplosions[i] =
+          this.enemyBulletExplosions[this.enemyBulletExplosions.length - 1];
+        this.enemyBulletExplosions.pop();
       }
     }
   }
@@ -394,7 +399,8 @@ export class WaveSystem {
           radius: 14,
         });
         this.doCrashImpact(crash.worldX, crash.worldY, worldMap);
-        this.satelliteCrashes.splice(i, 1);
+        this.satelliteCrashes[i] = this.satelliteCrashes[this.satelliteCrashes.length - 1];
+        this.satelliteCrashes.pop();
       }
     }
   }
