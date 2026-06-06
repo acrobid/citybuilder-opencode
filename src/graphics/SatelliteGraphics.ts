@@ -279,11 +279,16 @@ export function drawIonBolt(g: Phaser.GameObjects.Graphics, x: number, y: number
 }
 
 export function drawTeslaBolt(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+  const rx = Math.round(x);
+  const ry = Math.round(y);
   g.fillStyle(SPACE_COLORS.TESLA_ARC, 1);
-  g.fillRect(Math.round(x) - 3, Math.round(y) - 1, 6, 3);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 3, 3, 6);
+  g.fillRect(rx - 5, ry - 2, 10, 4);
+  g.fillRect(rx - 2, ry - 5, 4, 10);
   g.fillStyle(0xffffff, 0.9);
-  g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+  g.fillRect(rx - 2, ry - 2, 4, 4);
+  g.fillStyle(SPACE_COLORS.TESLA_ARC, 0.25);
+  g.fillRect(rx - 9, ry - 4, 18, 8);
+  g.fillRect(rx - 4, ry - 9, 8, 18);
 }
 
 export function drawTeslaChain(
@@ -294,7 +299,7 @@ export function drawTeslaChain(
   y2: number,
   seed: number,
 ): void {
-  const segments = 8;
+  const segments = 14;
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.sqrt(dx * dx + dy * dy);
@@ -303,7 +308,7 @@ export function drawTeslaChain(
   const ny = dy / len;
   const px = -ny;
   const py = nx;
-  const maxJitter = Math.min(len * 0.25, 40);
+  const maxJitter = Math.min(len * 0.3, 80);
 
   // Pseudo-random jitter per segment (seeded for consistent frame look)
   let r = seed * 7.3;
@@ -317,8 +322,21 @@ export function drawTeslaChain(
     jy.push(py * maxJitter * (j + s));
   }
 
-  // Outer glow pass (wide, for zoomed-out visibility)
-  g.lineStyle(14, 0x44ddff, 0.2);
+  // Outer glow pass (wide)
+  g.lineStyle(24, 0x44ddff, 0.25);
+  g.beginPath();
+  g.moveTo(x1, y1);
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const x = x1 + dx * t + jx[i - 1];
+    const y = y1 + dy * t + jy[i - 1];
+    g.lineTo(x, y);
+  }
+  g.lineTo(x2, y2);
+  g.strokePath();
+
+  // Mid glow
+  g.lineStyle(12, 0x88eeff, 0.5);
   g.beginPath();
   g.moveTo(x1, y1);
   for (let i = 1; i < segments; i++) {
@@ -331,7 +349,7 @@ export function drawTeslaChain(
   g.strokePath();
 
   // Core arc
-  g.lineStyle(5, 0xffffff, 0.9);
+  g.lineStyle(5, 0xffffff, 1);
   g.beginPath();
   g.moveTo(x1, y1);
   for (let i = 1; i < segments; i++) {
@@ -344,7 +362,7 @@ export function drawTeslaChain(
   g.strokePath();
 
   // Inner bright line
-  g.lineStyle(2, SPACE_COLORS.TESLA_ARC, 0.9);
+  g.lineStyle(2, SPACE_COLORS.TESLA_ARC, 1);
   g.beginPath();
   g.moveTo(x1, y1);
   for (let i = 1; i < segments; i++) {
@@ -355,6 +373,31 @@ export function drawTeslaChain(
   }
   g.lineTo(x2, y2);
   g.strokePath();
+}
+
+export function drawTeslaRemnant(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  t: number,
+): void {
+  const alpha = Math.max(0, 1 - t);
+  const spread = 10 + t * 40;
+  for (let b = 0; b < 3; b++) {
+    const bx = x + (Math.random() - 0.5) * spread;
+    const by = y + (Math.random() - 0.5) * spread;
+    g.lineStyle(3 + t * 6, SPACE_COLORS.TESLA_ARC, alpha * 0.4);
+    g.beginPath();
+    g.moveTo(x, y);
+    const steps = 4;
+    for (let i = 1; i <= steps; i++) {
+      const frac = i / steps;
+      const jx = (Math.random() - 0.5) * spread * 0.6;
+      const jy = (Math.random() - 0.5) * spread * 0.6;
+      g.lineTo(x + (bx - x) * frac + jx, y + (by - y) * frac + jy);
+    }
+    g.strokePath();
+  }
 }
 
 export function drawEMPWave(g: Phaser.GameObjects.Graphics, x: number, y: number): void {

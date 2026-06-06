@@ -100,7 +100,7 @@ export const SATELLITE_TYPES = {
     ring: "inner" as OrbitRing,
     fireRate: 600,
     damage: 10,
-    range: 250,
+    range: 400,
     cost: 200,
     projectileSpeed: 450,
     special: "chain",

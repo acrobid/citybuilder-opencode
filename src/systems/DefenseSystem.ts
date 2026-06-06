@@ -6,6 +6,7 @@ import {
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
   ION_BEAM_CONFIG,
+  SPACE_COLORS,
 } from "../config.js";
 import type { OrbitRing, SatelliteType } from "../config.js";
 import { OrbitalSatellite } from "../entities/OrbitalSatellite.js";
@@ -19,6 +20,7 @@ import {
   drawIonBeamLine,
   drawTeslaBolt,
   drawTeslaChain,
+  drawTeslaRemnant,
   drawEMPWave,
   drawShieldWave,
   drawShrapnelProj,
@@ -45,6 +47,13 @@ interface Projectile {
   chainCount: number; // tesla
   shrapnelLifetime: number; // shrapnel hub
   ownerSat?: OrbitalSatellite; // gravity black hole
+}
+
+interface TeslaRemnant {
+  x: number;
+  y: number;
+  life: number;
+  maxLife: number;
 }
 
 // Shrapnel projectile for shrapnel hub
@@ -81,6 +90,7 @@ export class DefenseSystem {
   private _renderTime = 0;
   // Explosion effects (position, radius, remaining time)
   explosions: { x: number; y: number; r: number; time: number; color: number }[] = [];
+  teslaRemnants: TeslaRemnant[] = [];
   particles: Particle[] = [];
 
   /** Place a satellite on the nearest ring at the cursor angle. Returns false if can't afford. */
@@ -355,7 +365,7 @@ export class DefenseSystem {
       } else {
         // Target dead: tesla tries to chain, others fly through
         if (p.drawType === "tesla" && p.chainCount < 2) {
-          const next = this.findClosestEnemyAt(p.worldX, p.worldY, 60, enemies, p.piercedEnemies);
+          const next = this.findClosestEnemyAt(p.worldX, p.worldY, 150, enemies, p.piercedEnemies);
           if (next) {
             p.targetEnemy = next;
             p.chainCount++;
@@ -394,6 +404,15 @@ export class DefenseSystem {
       if (this.explosions[i].time <= 0) {
         this.explosions[i] = this.explosions[this.explosions.length - 1];
         this.explosions.pop();
+      }
+    }
+
+    // Update tesla remnants
+    for (let i = this.teslaRemnants.length - 1; i >= 0; i--) {
+      this.teslaRemnants[i].life -= delta;
+      if (this.teslaRemnants[i].life <= 0) {
+        this.teslaRemnants[i] = this.teslaRemnants[this.teslaRemnants.length - 1];
+        this.teslaRemnants.pop();
       }
     }
 
@@ -472,17 +491,19 @@ export class DefenseSystem {
       p.targetEnemy.takeDamage(p.damage);
       p.piercedEnemies.add(p.targetEnemy);
       if (p.chainCount < 2) {
-        const next = this.findClosestEnemyAt(p.worldX, p.worldY, 60, enemies, p.piercedEnemies);
+        const next = this.findClosestEnemyAt(p.worldX, p.worldY, 150, enemies, p.piercedEnemies);
         if (next) {
           p.targetEnemy = next;
           p.chainCount++;
           p.damage = Math.floor(p.damage * 0.5);
-          return; // don't kill projectile
+          return;
         }
       }
-      // Kill target and explode
+      // Kill target and explode (bigger, longer-lasting for tesla)
       if (p.targetEnemy.alive) p.targetEnemy.takeDamage(Number.MAX_SAFE_INTEGER);
-      this.addExplosion(p.worldX, p.worldY, 16, 500, color);
+      this.addExplosion(p.worldX, p.worldY, 35, 1000, color);
+      this.spawnTeslaSparks(p.worldX, p.worldY);
+      this.teslaRemnants.push({ x: p.worldX, y: p.worldY, life: 500, maxLife: 500 });
       p.alive = false;
       return;
     }
@@ -859,6 +880,23 @@ export class DefenseSystem {
     }
   }
 
+  private spawnTeslaSparks(x: number, y: number): void {
+    for (let i = 0; i < 20; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 80 + Math.random() * 200;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 600 + Math.random() * 900,
+        maxLife: 1500,
+        size: 1.5 + Math.random() * 3,
+        color: Math.random() > 0.3 ? SPACE_COLORS.TESLA_ARC : 0xffffff,
+      });
+    }
+  }
+
   // ── Save/Load helpers ──
 
   getSatelliteData(): {
@@ -1039,6 +1077,13 @@ export class DefenseSystem {
       const alpha = Math.min(1, t * 2);
       const expand = 1 + (1 - t) * 1.5;
       drawExplosion(g, ex.x, ex.y, Math.round(ex.r * expand), alpha, ex.color);
+    }
+
+    // Tesla remnants (lingering arc effects)
+    for (const tr of this.teslaRemnants) {
+      if (!inView(tr.x, tr.y)) continue;
+      const t = Math.max(0, 1 - tr.life / tr.maxLife);
+      drawTeslaRemnant(g, tr.x, tr.y, t);
     }
 
     // Particles
