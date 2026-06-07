@@ -89,8 +89,6 @@ function drawAsteroid(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
     0xaa8844,
     0.2,
   );
-
-  drawHealthBar(g, enemy);
 }
 
 function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
@@ -178,8 +176,6 @@ function drawScout(g: Phaser.GameObjects.Graphics, enemy: Enemy): void {
   g.fillStyle(0x55ff88, 0.4);
   g.fillRect(cx - 6, cy - 10, 2, 2);
   g.fillRect(cx - 6, cy + 8, 2, 2);
-
-  drawHealthBar(g, enemy);
 }
 
 function drawOctagon(
@@ -262,11 +258,14 @@ function drawMothership(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: numb
   // Outer pulsing aura
   const auraR = r + 4 + Math.sin(t / 250) * 3;
   fillCircle(g, cx, cy, Math.round(auraR), 0xff3366, 0.08);
-
-  drawHealthBar(g, enemy);
 }
 
-export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: number): void {
+export function drawEnemy(
+  g: Phaser.GameObjects.Graphics,
+  enemy: Enemy,
+  time: number,
+  lod = false,
+): void {
   switch (enemy.type) {
     case "asteroid":
       drawAsteroid(g, enemy);
@@ -278,6 +277,8 @@ export function drawEnemy(g: Phaser.GameObjects.Graphics, enemy: Enemy, time: nu
       drawMothership(g, enemy, time);
       break;
   }
+  // Health bars become unreadable noise across a swarm at far zoom
+  if (!lod) drawHealthBar(g, enemy);
 }
 
 export function drawEnemyBullet(

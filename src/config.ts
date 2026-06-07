@@ -19,6 +19,11 @@ export const COLORS = {
 export const GAME_WIDTH = 1024;
 export const GAME_HEIGHT = 768;
 
+// Below this camera zoom, sub-pixel tile detail (grass, windows, grid, lane
+// markings, health bars) is dropped — it only shimmers and costs CPU when
+// downscaled this far. The city reads as color masses instead.
+export const LOD_ZOOM = 0.55;
+
 // ── Planet ──
 export const PLANET_CENTER_X = (MAP_COLS * TILE_SIZE) / 2; // 1024
 export const PLANET_CENTER_Y = (MAP_ROWS * TILE_SIZE) / 2; // 1024

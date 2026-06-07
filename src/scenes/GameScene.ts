@@ -8,8 +8,10 @@ import {
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
   SPACE_COLORS,
+  LOD_ZOOM,
 } from "../config.js";
 import { WorldMap } from "../map/WorldMap.js";
+import { drawPlanetShading } from "../graphics/SpaceGraphics.js";
 import { InputHandler } from "../input/InputHandler.js";
 import { EconomySystem } from "../systems/EconomySystem.js";
 import { ZoneSystem } from "../systems/ZoneSystem.js";
@@ -31,8 +33,10 @@ export class GameScene extends Phaser.Scene {
   worldMap: WorldMap;
   bgGraphics: Phaser.GameObjects.Graphics;
   mapGraphics: Phaser.GameObjects.Graphics;
+  planetFxGraphics: Phaser.GameObjects.Graphics;
   graphics: Phaser.GameObjects.Graphics;
   overlayGraphics: Phaser.GameObjects.Graphics;
+  private _lod = false;
   economy: EconomySystem;
   zoneSystem: ZoneSystem;
   powerSystem: PowerSystem;
@@ -82,6 +86,7 @@ export class GameScene extends Phaser.Scene {
 
     this.bgGraphics = this.add.graphics();
     this.mapGraphics = this.add.graphics();
+    this.planetFxGraphics = this.add.graphics();
     this.graphics = this.add.graphics();
     this.overlayGraphics = this.add.graphics();
 
@@ -95,6 +100,18 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(SPACE_COLORS.SPACE_BG);
     this.cameras.main.centerOn(PLANET_CENTER_X, PLANET_CENTER_Y);
     this.cameras.main.setZoom(1);
+
+    // Bloom: makes every beam, tracer, core and explosion glow against the
+    // black — the single biggest win for a zoomed-out space look. Phaser 4
+    // has no Bloom filter, so build it from ParallelFilters (Threshold + Blur,
+    // blended additively over the original). WebGL only.
+    if (this.game.renderer.type === Phaser.WEBGL) {
+      const pf = this.cameras.main.filters.internal.addParallelFilters();
+      pf.top.addThreshold(0.65, 1); // isolate the bright pixels
+      pf.top.addBlur(1, 2, 2, 1.1); // bloom them outward
+      pf.blend.blendMode = Phaser.BlendModes.ADD;
+      pf.blend.amount = 0.7;
+    }
 
     const tc = this.worldMap.tiles;
     const cx = 49,
@@ -112,7 +129,11 @@ export class GameScene extends Phaser.Scene {
 
     // Static space background / starfield / rings — render once.
     this.worldMap.renderBackground(this.bgGraphics);
-    this.worldMap.render(this.mapGraphics);
+    // Static planet sphere shading (limb darkening + terminator + atmosphere),
+    // drawn above the tiles so buildings still show through. Never changes.
+    drawPlanetShading(this.planetFxGraphics);
+    this._lod = this.cameras.main.zoom < LOD_ZOOM;
+    this.worldMap.render(this.mapGraphics, this._lod);
     this.worldMap.dirty = false;
   }
 
@@ -124,9 +145,17 @@ export class GameScene extends Phaser.Scene {
       this._fpsLastTime = time;
     }
 
+    // Re-render the map at a new level-of-detail when crossing the zoom
+    // threshold (drops sub-pixel tile detail when zoomed far out).
+    const lod = this.cameras.main.zoom < LOD_ZOOM;
+    if (lod !== this._lod) {
+      this._lod = lod;
+      this.worldMap.dirty = true;
+    }
+
     if (this._gameOver) {
       if (this.worldMap.dirty) {
-        this.worldMap.render(this.mapGraphics);
+        this.worldMap.render(this.mapGraphics, this._lod);
         this.worldMap.dirty = false;
       }
       this._drawEntities(time);
@@ -157,7 +186,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.worldMap.dirty) {
-      this.worldMap.render(this.mapGraphics);
+      this.worldMap.render(this.mapGraphics, this._lod);
       this.worldMap.dirty = false;
     }
 
@@ -177,7 +206,7 @@ export class GameScene extends Phaser.Scene {
 
     for (const enemy of this.waveSystem.enemies) {
       if (enemy.alive && this._isInView(enemy.worldX, enemy.worldY)) {
-        drawEnemy(gfx, enemy, time);
+        drawEnemy(gfx, enemy, time, this._lod);
       }
     }
 

@@ -141,7 +141,7 @@ export class WorldMap {
     drawOrbitRings(graphics);
   }
 
-  render(graphics: Phaser.GameObjects.Graphics): void {
+  render(graphics: Phaser.GameObjects.Graphics, lod = false): void {
     graphics.clear();
 
     for (const { x, y } of this.planetTiles) {
@@ -151,22 +151,22 @@ export class WorldMap {
 
       switch (tile.zone) {
         case "road":
-          drawRoadTile(graphics, x, y, px, py, this.tiles);
+          drawRoadTile(graphics, x, y, px, py, this.tiles, lod);
           break;
         case "residential":
-          drawResidentialTile(graphics, x, y, px, py, tile.level);
+          drawResidentialTile(graphics, x, y, px, py, tile.level, lod);
           break;
         case "commercial":
-          drawCommercialTile(graphics, x, y, px, py, tile.level);
+          drawCommercialTile(graphics, x, y, px, py, tile.level, lod);
           break;
         case "industrial":
-          drawIndustrialTile(graphics, x, y, px, py, tile.level);
+          drawIndustrialTile(graphics, x, y, px, py, tile.level, lod);
           break;
         case "powerplant":
-          drawPowerPlantTile(graphics, x, y, px, py, this.tiles);
+          drawPowerPlantTile(graphics, x, y, px, py, this.tiles, lod);
           break;
         default:
-          drawEmptyTile(graphics, x, y, px, py);
+          drawEmptyTile(graphics, x, y, px, py, lod);
           break;
       }
 
@@ -184,10 +184,12 @@ export class WorldMap {
         graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
       }
 
-      // Grid lines
-      graphics.fillStyle(COLORS.GRID_LINE, 0.1);
-      graphics.fillRect(px, py, TILE_SIZE, 1);
-      graphics.fillRect(px, py, 1, TILE_SIZE);
+      // Grid lines — a shimmering mesh when downscaled, so drop them at LOD
+      if (!lod) {
+        graphics.fillStyle(COLORS.GRID_LINE, 0.1);
+        graphics.fillRect(px, py, TILE_SIZE, 1);
+        graphics.fillRect(px, py, 1, TILE_SIZE);
+      }
     }
   }
 

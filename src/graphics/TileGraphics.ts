@@ -40,8 +40,9 @@ export function drawEmptyTile(
   y: number,
   px: number,
   py: number,
+  lod = false,
 ): void {
-  const shade = grassShade(x, y);
+  const shade = lod ? 0 : grassShade(x, y);
   const r = ((COLORS.EMPTY >> 16) & 0xff) + shade * 255;
   const gr = ((COLORS.EMPTY >> 8) & 0xff) + shade * 255;
   const b = (COLORS.EMPTY & 0xff) + shade * 255;
@@ -51,6 +52,8 @@ export function drawEmptyTile(
     Math.min(255, Math.max(0, b | 0));
   g.fillStyle(color, 1);
   g.fillRect(px, py, S, S);
+
+  if (lod) return; // grass tufts are sub-pixel when zoomed out
 
   if ((x * 3 + y * 7) % 5 === 0) {
     g.fillStyle(0x3a7a2e, 0.4);
@@ -72,9 +75,12 @@ export function drawRoadTile(
   px: number,
   py: number,
   tiles: Tile[][],
+  lod = false,
 ): void {
   g.fillStyle(COLORS.ROAD, 1);
   g.fillRect(px, py, S, S);
+
+  if (lod) return; // edge lines + lane dashes are sub-pixel when zoomed out
 
   const rows = tiles.length;
   const cols = tiles[0].length;
@@ -118,12 +124,13 @@ export function drawResidentialTile(
   px: number,
   py: number,
   level: number,
+  lod = false,
 ): void {
   const baseColor = level >= 3 ? 0x44bb44 : level >= 2 ? 0x3cb043 : 0x33aa33;
   g.fillStyle(baseColor, 1);
   g.fillRect(px, py, S, S);
 
-  if (level === 0) return;
+  if (level === 0 || lod) return;
 
   const wallColor = level >= 3 ? 0xf5deb3 : level >= 2 ? 0xfaf0d7 : 0xfffacd;
   const windowColor = 0x87ceeb;
@@ -177,12 +184,13 @@ export function drawCommercialTile(
   px: number,
   py: number,
   level: number,
+  lod = false,
 ): void {
   const baseColor = level >= 3 ? 0x4488dd : level >= 2 ? 0x3b78cc : 0x3366cc;
   g.fillStyle(baseColor, 1);
   g.fillRect(px, py, S, S);
 
-  if (level === 0) return;
+  if (level === 0 || lod) return;
 
   const wallColor = level >= 3 ? 0xd4e6f1 : 0xe8f0f8;
   const windowColor = 0x2ecc71;
@@ -228,12 +236,13 @@ export function drawIndustrialTile(
   px: number,
   py: number,
   level: number,
+  lod = false,
 ): void {
   const baseColor = level >= 3 ? 0xdd8844 : level >= 2 ? 0xd4a33a : 0xcc9933;
   g.fillStyle(baseColor, 1);
   g.fillRect(px, py, S, S);
 
-  if (level === 0) return;
+  if (level === 0 || lod) return;
 
   const bldgColor = 0x808080;
   const roofColor = 0x606060;
@@ -283,9 +292,12 @@ export function drawPowerPlantTile(
   px: number,
   py: number,
   _tiles: Tile[][],
+  lod = false,
 ): void {
   g.fillStyle(COLORS.POWERPLANT, 1);
   g.fillRect(px, py, S, S);
+
+  if (lod) return; // building detail is sub-pixel when zoomed out
 
   g.fillStyle(0xe8e8e8, 0.9);
   g.fillRect(px + 2, py + 4, S - 4, S - 7);

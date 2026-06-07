@@ -5,9 +5,30 @@ import { fillCircle } from "./SpaceGraphics.js";
 
 // ── Satellite sprites ──
 
+// Signature glow colour per weapon type. At far zoom the sprite shape is
+// sub-pixel, so this halo is what actually tells the player which defenses
+// they have and where — a constellation of coloured lights on the rings.
+const SAT_GLOW: Record<OrbitalSatellite["type"], number> = {
+  laser: 0xff3322,
+  missile: 0xff8800,
+  plasma: 0x00ff88,
+  railgun: 0xff5555,
+  ion: 0xffdd44,
+  tesla: 0x00ccff,
+  gravity: 0xcc88ff,
+  emp: 0xffff44,
+  shield: 0x88ccff,
+  shrapnel: 0xffaa00,
+};
+
 export function drawSatellite(g: Phaser.GameObjects.Graphics, sat: OrbitalSatellite): void {
   const cx = Math.round(sat.worldX);
   const cy = Math.round(sat.worldY);
+
+  // Emissive halo (reads at distance + blooms nicely under the bloom filter)
+  const glow = SAT_GLOW[sat.type];
+  fillCircle(g, cx, cy, 10, glow, 0.16);
+  fillCircle(g, cx, cy, 6, glow, 0.3);
 
   // Draw type-specific shape
   switch (sat.type) {
@@ -42,6 +63,48 @@ export function drawSatellite(g: Phaser.GameObjects.Graphics, sat: OrbitalSatell
       drawShrapnelSat(g, cx, cy);
       break;
   }
+
+  // Hot white core
+  fillCircle(g, cx, cy, 2, 0xffffff, 0.9);
+}
+
+/**
+ * Brief muzzle flash at a satellite when it fires, pointing toward the target.
+ * `t` runs 0 (just fired) → 1 (gone).
+ */
+export function drawMuzzleFlash(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  angle: number,
+  t: number,
+  color: number,
+): void {
+  const a = 1 - t;
+  if (a <= 0) return;
+  const cx = Math.round(x);
+  const cy = Math.round(y);
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  const perpX = -sinA;
+  const perpY = cosA;
+
+  // Directional flash cone
+  const len = 10 + t * 14;
+  const halfW = 5 * a;
+  g.fillStyle(color, a * 0.5);
+  g.fillTriangle(
+    cx + cosA * len,
+    cy + sinA * len,
+    cx + perpX * halfW,
+    cy + perpY * halfW,
+    cx - perpX * halfW,
+    cy - perpY * halfW,
+  );
+
+  // Bright burst at the muzzle
+  fillCircle(g, cx, cy, Math.round(3 + a * 4), color, a * 0.5);
+  fillCircle(g, cx, cy, Math.round(1 + a * 3), 0xffffff, a * 0.85);
 }
 
 // Type 1: Laser Turret — red diamond

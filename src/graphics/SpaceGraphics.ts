@@ -88,6 +88,51 @@ export function drawPlanetRim(g: Phaser.GameObjects.Graphics): void {
   }
 }
 
+/**
+ * Shade the planet so it reads as a lit sphere rather than a flat green disk.
+ * Drawn once onto a translucent layer *above* the tiles (buildings still show
+ * through), so it never needs re-rendering. Light comes from the top-left.
+ */
+export function drawPlanetShading(g: Phaser.GameObjects.Graphics): void {
+  const cx = PLANET_CENTER_X;
+  const cy = PLANET_CENTER_Y;
+  const R = PLANET_RADIUS;
+
+  // ── Day-side highlight (soft specular toward the light) ──
+  fillCircle(g, cx - R * 0.32, cy - R * 0.36, Math.round(R * 0.62), 0x9fd0ff, 0.07);
+  fillCircle(g, cx - R * 0.3, cy - R * 0.34, Math.round(R * 0.34), 0xcdeaff, 0.08);
+
+  // ── Limb darkening (radial volume — edges recede into space) ──
+  const bands = 16;
+  const bandW = Math.ceil((R * 0.55) / bands) + 2;
+  for (let i = 0; i < bands; i++) {
+    const t = i / (bands - 1); // 0 = inner, 1 = edge
+    const rr = R * (0.45 + 0.55 * t);
+    const alpha = 0.03 + t * t * 0.5;
+    g.lineStyle(bandW, 0x040810, alpha);
+    g.strokeCircle(cx, cy, Math.round(rr));
+  }
+
+  // ── Terminator / night side (offset dark discs that bleed into space) ──
+  // The far edge of each disc sits over deep space (same colour) so it is
+  // invisible; the near edge curves across the planet as a soft shadow line.
+  const ox = R * 0.38;
+  const oy = R * 0.44;
+  for (const [scale, alpha] of [
+    [1.16, 0.16],
+    [1.04, 0.16],
+    [0.94, 0.18],
+  ] as const) {
+    fillCircle(g, cx + ox, cy + oy, Math.round(R * scale), 0x040814, alpha);
+  }
+
+  // ── Atmospheric glow hugging the limb ──
+  g.lineStyle(6, SPACE_COLORS.PLANET_RIM, 0.12);
+  g.strokeCircle(cx, cy, R - 2);
+  g.lineStyle(3, 0x8fc4ff, 0.18);
+  g.strokeCircle(cx, cy, R - 1);
+}
+
 /** Draw dashed orbit rings */
 export function drawOrbitRings(g: Phaser.GameObjects.Graphics): void {
   const centerX = PLANET_CENTER_X;

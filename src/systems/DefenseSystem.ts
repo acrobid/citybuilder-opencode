@@ -25,6 +25,7 @@ import {
   drawShrapnelProj,
   drawShieldBarrier,
   drawBlackHoleEffect,
+  drawMuzzleFlash,
 } from "../graphics/SatelliteGraphics.js";
 import { drawExplosion } from "../graphics/EnemyGraphics.js";
 
@@ -77,6 +78,15 @@ interface Particle {
   color: number;
 }
 
+interface MuzzleFlash {
+  x: number;
+  y: number;
+  angle: number;
+  life: number;
+  maxLife: number;
+  color: number;
+}
+
 export class DefenseSystem {
   satellites: OrbitalSatellite[] = [];
   projectiles: Projectile[] = [];
@@ -89,6 +99,11 @@ export class DefenseSystem {
   explosions: { x: number; y: number; r: number; time: number; color: number }[] = [];
   teslaRemnants: TeslaRemnant[] = [];
   particles: Particle[] = [];
+  muzzleFlashes: MuzzleFlash[] = [];
+
+  private addMuzzleFlash(x: number, y: number, angle: number, color: number): void {
+    this.muzzleFlashes.push({ x, y, angle, life: 110, maxLife: 110, color });
+  }
 
   /** Place a satellite on the nearest ring at the cursor angle. Returns false if can't afford. */
   placeSatellite(type: SatelliteType, angle: number, ring: OrbitRing): boolean {
@@ -249,6 +264,7 @@ export class DefenseSystem {
 
       // Create projectile
       const angle = Math.atan2(closest.worldY - sat.worldY, closest.worldX - sat.worldX);
+      this.addMuzzleFlash(sat.worldX, sat.worldY, angle, this.getExplosionColor(sat.type));
       this.projectiles.push({
         worldX: sat.worldX,
         worldY: sat.worldY,
@@ -378,6 +394,15 @@ export class DefenseSystem {
       pt.y += pt.vy * (delta / 1000);
       pt.vx *= 0.97;
       pt.vy *= 0.97;
+    }
+
+    // Update muzzle flashes
+    for (let i = this.muzzleFlashes.length - 1; i >= 0; i--) {
+      this.muzzleFlashes[i].life -= delta;
+      if (this.muzzleFlashes[i].life <= 0) {
+        this.muzzleFlashes[i] = this.muzzleFlashes[this.muzzleFlashes.length - 1];
+        this.muzzleFlashes.pop();
+      }
     }
   }
 
@@ -725,6 +750,7 @@ export class DefenseSystem {
       return;
     const count = 10;
     const outwardAngle = Math.atan2(sat.worldY - PLANET_CENTER_Y, sat.worldX - PLANET_CENTER_X);
+    this.addMuzzleFlash(sat.worldX, sat.worldY, outwardAngle, 0xffaa00);
     const arc = (Math.PI * 2) / 3; // 120° spread facing away from planet
     for (let i = 0; i < count; i++) {
       const angle = outwardAngle - arc / 2 + (i / (count - 1)) * arc + (Math.random() - 0.5) * 0.25;
@@ -1040,6 +1066,12 @@ export class DefenseSystem {
       const alpha = Math.max(0, pt.life / pt.maxLife);
       g.fillStyle(pt.color, alpha * 0.8);
       g.fillCircle(Math.round(pt.x), Math.round(pt.y), Math.max(1, Math.round(pt.size * alpha)));
+    }
+
+    // Muzzle flashes
+    for (const mf of this.muzzleFlashes) {
+      if (!inView(mf.x, mf.y)) continue;
+      drawMuzzleFlash(g, mf.x, mf.y, mf.angle, 1 - mf.life / mf.maxLife, mf.color);
     }
   }
 }
