@@ -122,3 +122,37 @@ body {
 #game-over button:hover {
   background: #cc4444;
 }
+
+#game-container {
+  position: relative;
+}
+
+#pause-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+#pause-overlay .pause-text {
+  font-family: monospace;
+  font-size: 48px;
+  color: #88aacc;
+  letter-spacing: 8px;
+  text-shadow: 0 0 20px rgba(100, 160, 200, 0.5);
+}
+
+#pause-overlay .pause-hint {
+  font-family: monospace;
+  font-size: 14px;
+  color: #667788;
+}
+
+#btn-pause {
+  border-color: #556688 !important;
+}

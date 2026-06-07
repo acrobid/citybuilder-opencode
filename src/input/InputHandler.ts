@@ -82,6 +82,7 @@ export class InputHandler {
     canvas.addEventListener(
       "wheel",
       (e: WheelEvent) => {
+        if (window.gameState.paused) return;
         e.preventDefault();
         const cam = this.scene.cameras.main;
         const newZoom = Phaser.Math.Clamp(cam.zoom - e.deltaY * 0.001, 0.15, 3);
@@ -156,6 +157,7 @@ export class InputHandler {
   }
 
   handleClick(): void {
+    if (window.gameState.paused) return;
     const tool = window.gameState.selectedTool;
     if (!tool) return;
 
@@ -242,6 +244,7 @@ export class InputHandler {
   }
 
   update(_time: number, _delta: number): void {
+    if (window.gameState.paused) return;
     const pointer = this.scene.input.activePointer;
     if (pointer.isDown) return;
     if (!this.pointerOverCanvas) return;

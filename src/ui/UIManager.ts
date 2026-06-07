@@ -1,3 +1,4 @@
+import * as Phaser from "phaser";
 import type { Tile } from "../entities/Tile.js";
 import { WorldMap } from "../map/WorldMap.js";
 import type { DefenseSystem } from "../systems/DefenseSystem.js";
@@ -8,6 +9,7 @@ interface UIScene {
   time: { now: number };
   defenseSystem: DefenseSystem;
   waveSystem: WaveSystem;
+  game: Phaser.Game;
 }
 
 export class UIManager {
@@ -25,6 +27,8 @@ export class UIManager {
   fpsEl: HTMLElement | null;
   gameOverEl: HTMLElement | null;
   goWaveEl: HTMLElement | null;
+  pauseOverlay: HTMLElement | null;
+  pauseBtn: HTMLElement | null;
   private _prevMoney = -1;
   private _prevPop = -1;
   private _prevIncome = -1;
@@ -55,6 +59,9 @@ export class UIManager {
     document.getElementById("btn-restart")?.addEventListener("click", () => {
       location.reload();
     });
+    this.pauseOverlay = document.getElementById("pause-overlay");
+    this.pauseBtn = document.getElementById("btn-pause");
+    this.pauseBtn?.addEventListener("click", () => this.togglePause());
     this.setupToolbar();
   }
 
@@ -113,6 +120,11 @@ export class UIManager {
         h: "shield",
         d: "shrapnel",
       };
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        this.togglePause();
+        return;
+      }
       const key = e.key.toLowerCase();
       if (key === "escape") {
         window.gameState.selectedTool = null;
@@ -184,6 +196,20 @@ export class UIManager {
   showGameOver(wave: number): void {
     if (this.gameOverEl) this.gameOverEl.style.display = "block";
     if (this.goWaveEl) this.goWaveEl.textContent = `Survived ${wave} waves`;
+  }
+
+  togglePause(): void {
+    const gs = window.gameState;
+    gs.paused = !gs.paused;
+    if (gs.paused) {
+      if (this.pauseOverlay) this.pauseOverlay.style.display = "flex";
+      if (this.pauseBtn) this.pauseBtn.textContent = "Resume (Space)";
+      this.scene.game.pause();
+    } else {
+      if (this.pauseOverlay) this.pauseOverlay.style.display = "none";
+      if (this.pauseBtn) this.pauseBtn.textContent = "Pause (Space)";
+      this.scene.game.resume();
+    }
   }
 
   showTileInfo(tile: Tile | null): void {

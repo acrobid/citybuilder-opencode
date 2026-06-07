@@ -13,6 +13,7 @@ declare global {
       waveActive: boolean;
       enemiesRemaining: number;
       gameOver: boolean;
+      paused: boolean;
     };
   }
 }

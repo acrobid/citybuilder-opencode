@@ -14,6 +14,7 @@ window.gameState = {
   waveActive: false,
   enemiesRemaining: 0,
   gameOver: false,
+  paused: false,
 };
 
 new Phaser.Game({

@@ -8,7 +8,12 @@
   </head>
   <body>
     <div id="app">
-      <div id="game-container"></div>
+      <div id="game-container">
+        <div id="pause-overlay">
+          <div class="pause-text">PAUSED</div>
+          <div class="pause-hint">Press Space or click Pause to resume</div>
+        </div>
+      </div>
       <div id="sidebar">
         <div id="stats">
           <div>Money: $<span id="stat-money">0</span></div>
@@ -49,6 +54,8 @@
           <button id="btn-load">Load Game</button>
           <button id="btn-spawn-wave" class="danger">Spawn Wave</button>
           <button id="btn-spawn-wave-closer" class="danger">Spawn Wave (Fast)</button>
+          <hr style="border-color: #444; margin: 4px 0" />
+          <button id="btn-pause">Pause (Space)</button>
         </div>
         <div id="tile-info"></div>
         <div id="game-over" style="display: none">
