@@ -37,6 +37,29 @@ export function fillCircle(
   }
 }
 
+/** Fill an annulus (ring) between innerR and outerR using horizontal scanlines */
+function fillAnnulus(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+  color: number,
+  alpha: number,
+): void {
+  g.fillStyle(color, alpha);
+  const oir = Math.round(outerR);
+  const iir = Math.round(innerR);
+  for (let row = -oir; row <= oir; row++) {
+    const outerW = Math.sqrt(Math.max(0, oir * oir - row * row)) | 0;
+    const innerW = Math.abs(row) <= iir ? Math.sqrt(Math.max(0, iir * iir - row * row)) | 0 : 0;
+    if (outerW > innerW) {
+      g.fillRect(Math.round(cx - outerW), Math.round(cy + row), outerW - innerW, 1);
+      g.fillRect(Math.round(cx + innerW), Math.round(cy + row), outerW - innerW, 1);
+    }
+  }
+}
+
 // ── Main rendering ──
 
 /** Draw deep space background + starfield across the entire map, but only on tiles outside the planet */
@@ -103,14 +126,14 @@ export function drawPlanetShading(g: Phaser.GameObjects.Graphics): void {
   fillCircle(g, cx - R * 0.3, cy - R * 0.34, Math.round(R * 0.34), 0xcdeaff, 0.08);
 
   // ── Limb darkening (radial volume — edges recede into space) ──
-  const bands = 16;
-  const bandW = Math.ceil((R * 0.55) / bands) + 2;
+  // Annular fills avoid the ring artifacts that strokeCircle produces.
+  const bands = 20;
   for (let i = 0; i < bands; i++) {
-    const t = i / (bands - 1); // 0 = inner, 1 = edge
-    const rr = R * (0.45 + 0.55 * t);
+    const t = i / (bands - 1);
+    const outerR = R * (0.45 + 0.55 * t);
+    const innerR = i > 0 ? R * (0.45 + (0.55 * (i - 1)) / (bands - 1)) : 0;
     const alpha = 0.03 + t * t * 0.5;
-    g.lineStyle(bandW, 0x040810, alpha);
-    g.strokeCircle(cx, cy, Math.round(rr));
+    fillAnnulus(g, cx, cy, innerR, outerR, 0x040810, alpha);
   }
 
   // ── Terminator / night side (offset dark discs that bleed into space) ──
