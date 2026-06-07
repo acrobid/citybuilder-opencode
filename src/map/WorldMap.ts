@@ -107,30 +107,42 @@ export class WorldMap {
   }
 
   recalculateConnectivity(): void {
-    for (let y = 0; y < this.rows; y++) {
-      for (let x = 0; x < this.cols; x++) {
-        const tile = this.tiles[y][x];
-        if (tile.zone !== "empty" && tile.zone !== "road") {
-          tile.roadConnected = this.isRoadAdjacent(tile);
-        } else {
-          tile.roadConnected = false;
-        }
+    // Only planet tiles can hold zones, so skip the ~8,600 space tiles.
+    for (const { x, y } of this.planetTiles) {
+      const tile = this.tiles[y][x];
+      if (tile.zone !== "empty" && tile.zone !== "road") {
+        tile.roadConnected = this.isRoadAdjacentAt(x, y);
+      } else {
+        tile.roadConnected = false;
       }
     }
     this.dirty = true;
   }
 
+  /** Allocation-free road-adjacency check (avoids getNeighbors array churn). */
+  private isRoadAdjacentAt(x: number, y: number): boolean {
+    const t = this.tiles;
+    if (y > 0 && t[y - 1][x].zone === "road") return true;
+    if (y < this.rows - 1 && t[y + 1][x].zone === "road") return true;
+    if (x > 0 && t[y][x - 1].zone === "road") return true;
+    if (x < this.cols - 1 && t[y][x + 1].zone === "road") return true;
+    return false;
+  }
+
+  /**
+   * Draw the static space background, starfield, planet rim and orbit rings.
+   * These never change, so this should be rendered once into a dedicated layer
+   * rather than on every dirty re-render.
+   */
+  renderBackground(graphics: Phaser.GameObjects.Graphics): void {
+    graphics.clear();
+    drawSpaceBackground(graphics, this.spaceTiles);
+    drawPlanetRim(graphics);
+    drawOrbitRings(graphics);
+  }
+
   render(graphics: Phaser.GameObjects.Graphics): void {
     graphics.clear();
-
-    // Draw space background first (fills entire map, adds stars outside planet)
-    drawSpaceBackground(graphics, this.spaceTiles);
-
-    // Draw planet atmospheric rim
-    drawPlanetRim(graphics);
-
-    // Draw orbit rings
-    drawOrbitRings(graphics);
 
     for (const { x, y } of this.planetTiles) {
       const tile = this.tiles[y][x];

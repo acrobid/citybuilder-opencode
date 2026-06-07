@@ -142,17 +142,6 @@ export const SATELLITE_TYPES = {
 } as const;
 export type SatelliteType = keyof typeof SATELLITE_TYPES;
 
-// ── Synergy Config ──
-export const SYNERGY = {
-  twinMaxAngle: (30 * Math.PI) / 180, // 30° in radians
-  trinityMaxAngle: (25 * Math.PI) / 180, // 25° in radians
-  crossRingMaxAngle: (35 * Math.PI) / 180, // 35° in radians
-  twinFireRateBonus: 0.2, // +20% fire rate
-  twinDamageBonus: 0.15, // +15% damage
-  trinityDamageBonus: 0.3, // +30% damage
-  crossRingRangeBonus: 0.1, // +10% range
-} as const;
-
 // ── Enemy Types ──
 export const ENEMY_TYPES = {
   asteroid: { speed: 30, health: 80, damage: 1, radius: 24, score: 10, spawnDelay: 200 },

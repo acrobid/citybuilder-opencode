@@ -29,6 +29,7 @@ import { drawSatellite } from "../graphics/SatelliteGraphics.js";
 
 export class GameScene extends Phaser.Scene {
   worldMap: WorldMap;
+  bgGraphics: Phaser.GameObjects.Graphics;
   mapGraphics: Phaser.GameObjects.Graphics;
   graphics: Phaser.GameObjects.Graphics;
   overlayGraphics: Phaser.GameObjects.Graphics;
@@ -79,6 +80,7 @@ export class GameScene extends Phaser.Scene {
     this.waveSystem = new WaveSystem();
     this.defenseSystem = new DefenseSystem();
 
+    this.bgGraphics = this.add.graphics();
     this.mapGraphics = this.add.graphics();
     this.graphics = this.add.graphics();
     this.overlayGraphics = this.add.graphics();
@@ -108,6 +110,8 @@ export class GameScene extends Phaser.Scene {
     this.worldMap.recalculateConnectivity();
     window.gameState.population = 50;
 
+    // Static space background / starfield / rings — render once.
+    this.worldMap.renderBackground(this.bgGraphics);
     this.worldMap.render(this.mapGraphics);
     this.worldMap.dirty = false;
   }
@@ -126,6 +130,10 @@ export class GameScene extends Phaser.Scene {
         this.worldMap.dirty = false;
       }
       this._drawEntities(time);
+      return;
+    }
+
+    if (window.gameState.paused) {
       return;
     }
 

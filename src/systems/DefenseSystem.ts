@@ -1,7 +1,6 @@
 import * as Phaser from "phaser";
 import {
   SATELLITE_TYPES,
-  SYNERGY,
   SHIELD_BARRIER,
   PLANET_CENTER_X,
   PLANET_CENTER_Y,
@@ -85,8 +84,6 @@ export class DefenseSystem {
   laserBeamTargets: Map<OrbitalSatellite, Enemy> = new Map();
   ionBeamTargets: Map<OrbitalSatellite, Enemy> = new Map();
   private cooldowns: Map<OrbitalSatellite, number> = new Map();
-  private _lastSynergyTime = 0;
-  private _synergyDirty = true;
   private _renderTime = 0;
   // Explosion effects (position, radius, remaining time)
   explosions: { x: number; y: number; r: number; time: number; color: number }[] = [];
@@ -102,7 +99,6 @@ export class DefenseSystem {
     const sat = new OrbitalSatellite(type, ring, angle);
     this.satellites.push(sat);
     this.cooldowns.set(sat, 0);
-    this._synergyDirty = true;
 
     if (type === "shield") {
       sat.barriers = Array.from({ length: SHIELD_BARRIER.count }, () => SHIELD_BARRIER.hitCount);
@@ -132,52 +128,12 @@ export class DefenseSystem {
       window.gameState.money += refund;
       this.satellites = this.satellites.filter((s) => s !== closest);
       this.cooldowns.delete(closest);
-      this._synergyDirty = true;
       return true;
     }
     return false;
   }
 
-  /** Calculate synergy for all satellites based on current positions */
-  private calculateSynergy(): void {
-    // Reset all
-    for (const sat of this.satellites) {
-      sat.hasTwinSynergy = false;
-      sat.hasTrinitySynergy = false;
-      sat.hasCrossRingSynergy = false;
-    }
-
-    const count = this.satellites.length;
-    for (let i = 0; i < count; i++) {
-      const a = this.satellites[i];
-      let sameRingCount = 1;
-      let differentRingSynergy = false;
-
-      for (let j = 0; j < count; j++) {
-        if (i === j) continue;
-        const b = this.satellites[j];
-        const angDist = a.angularDistanceTo(b);
-
-        if (a.ring === b.ring) {
-          // Same ring: check for twin/trinity
-          if (angDist <= SYNERGY.twinMaxAngle) {
-            sameRingCount++;
-          }
-        } else {
-          // Different ring: check for cross-ring
-          if (angDist <= SYNERGY.crossRingMaxAngle) {
-            differentRingSynergy = true;
-          }
-        }
-      }
-
-      if (sameRingCount >= 3) a.hasTrinitySynergy = true;
-      if (sameRingCount >= 2) a.hasTwinSynergy = true;
-      if (differentRingSynergy) a.hasCrossRingSynergy = true;
-    }
-  }
-
-  /** Main update: orbit, synergy, fire, projectiles, specials */
+  /** Main update: orbit, fire, projectiles, specials */
   update(
     time: number,
     delta: number,
@@ -197,13 +153,6 @@ export class DefenseSystem {
     // Orbit all satellites
     for (const sat of this.satellites) {
       sat.orbit(delta);
-    }
-
-    // Calculate synergy (throttled to 500ms or when dirty)
-    if (this._synergyDirty || time - this._lastSynergyTime >= 500) {
-      this.calculateSynergy();
-      this._lastSynergyTime = time;
-      this._synergyDirty = false;
     }
 
     // Apply continuous effects (black hole, shield)
@@ -954,7 +903,6 @@ export class DefenseSystem {
       this.satellites.push(sat);
       this.cooldowns.set(sat, 0);
     }
-    this._synergyDirty = true;
   }
 
   render(

@@ -7,17 +7,12 @@ export class PowerSystem {
   private _visited: Uint8Array = new Uint8Array(0);
   private _queue: number[] = [];
 
-  recalculate(worldMap: WorldMap): void {
+  /** Recompute power coverage. Returns true if any tile's powered state changed. */
+  recalculate(worldMap: WorldMap): boolean {
     const cols = worldMap.cols;
-    const rows = worldMap.rows;
-    const needed = cols * rows;
+    const needed = cols * worldMap.rows;
 
-    // Reset power state
-    for (const { x, y } of worldMap.planetTiles) {
-      worldMap.tiles[y][x].isPowered = false;
-    }
-
-    // Pre-allocate or reuse visited array
+    // Pre-allocate or reuse visited array (visited[idx] === 1 means powered)
     if (this._visited.length !== needed) {
       this._visited = new Uint8Array(needed);
     } else {
@@ -29,6 +24,18 @@ export class PowerSystem {
         this.bfsPower(worldMap, x, y, cols);
       }
     }
+
+    // Apply results, detecting whether anything actually changed.
+    let changed = false;
+    for (const { x, y } of worldMap.planetTiles) {
+      const tile = worldMap.tiles[y][x];
+      const powered = this._visited[y * cols + x] === 1;
+      if (tile.isPowered !== powered) {
+        tile.isPowered = powered;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   bfsPower(worldMap: WorldMap, startX: number, startY: number, cols: number): void {
@@ -51,8 +58,6 @@ export class PowerSystem {
       if (visited[idx]) continue;
       visited[idx] = 1;
 
-      worldMap.tiles[y][x].isPowered = true;
-
       const nd = dist + 1;
       queue.push((nd << 16) | (y << 8) | (x + 1));
       queue.push((nd << 16) | (y << 8) | (x - 1));
@@ -64,8 +69,9 @@ export class PowerSystem {
   update(time: number, worldMap: WorldMap): void {
     if (time - this.lastTick >= this.tickInterval) {
       this.lastTick = time;
-      this.recalculate(worldMap);
-      worldMap.markDirty();
+      if (this.recalculate(worldMap)) {
+        worldMap.markDirty();
+      }
     }
   }
 }

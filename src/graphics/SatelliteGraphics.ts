@@ -9,15 +9,6 @@ export function drawSatellite(g: Phaser.GameObjects.Graphics, sat: OrbitalSatell
   const cx = Math.round(sat.worldX);
   const cy = Math.round(sat.worldY);
 
-  // Synergy glow (underneath)
-  if (sat.hasTwinSynergy || sat.hasTrinitySynergy) {
-    const glowAlpha = sat.hasTrinitySynergy ? 0.4 : 0.25;
-    fillCircle(g, cx, cy, 8, 0xffffff, glowAlpha);
-  }
-  if (sat.hasCrossRingSynergy) {
-    fillCircle(g, cx, cy, 9, 0x88aacc, 0.2);
-  }
-
   // Draw type-specific shape
   switch (sat.type) {
     case "laser":
